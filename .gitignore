@@ -1,0 +1,23 @@
+# Secrets / local config
+.env
+.env.*
+!.env.example
+CLAUDE.local.md
+.claude/settings.local.json
+.gemini/.env
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
+
+# Python (remove if not applicable)
+__pycache__/
+*.pyc
+.venv/
+
+# Models and large data
+*.gguf
+*.safetensors
+*.bin
+data/raw/
