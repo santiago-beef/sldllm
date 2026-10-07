@@ -1,0 +1,1 @@
+Linux version 2.6.22 (root@psp-work-build) (gcc version 4.2.1) #1 PREEMPT Tue Oct 6 05:32:47 UTC 2026

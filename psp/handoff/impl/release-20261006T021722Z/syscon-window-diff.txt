@@ -1,0 +1,624 @@
+D10 proof: Syscon_cmd transaction window S5..S20 (DESIGN 2.1, 7.2)
+========================================================================
+baseline: /home/ubuntu/psp/work/prebuilt/vmlinux  Syscon_cmd 880cee10..880cf178 (872 bytes)
+new:      /home/ubuntu/psp/work/out/20261006T021722Z/vmlinux  Syscon_cmd 880ceed0..880cf300 (1072 bytes)
+S5 (lw 0xbe240004) .. S20 (sw 0x08 -> 0xbe24000c): baseline 880ceeec..880cf0bc, new 880cefb0..880cf278
+instructions on S5..S20 paths incl. the -3/-4 exits: baseline 105, new 105
+identical apart from stack offsets: NO
+identical apart from stack offsets and a consistent register renaming: YES
+register renaming (baseline -> new): s3->s7, s4->s3, s5->s4, s6->s5, s7->s6
+non-stack loads/stores (MMIO and buffers) in the same order and form: YES
+calls inside the window: baseline 0, new 0
+
+exit hand-off (syscon.c PSC_XFER_OUT) checks, new image:
+  retry edge not followed: 880cf2e8 bnel t8,v0,880cef4c
+instructions on paths from S20 (880cf278) to the hand-off (880cf0e8): 33
+writes of t0 / t8 on those paths: 
+  880cf2e4 addiu t8,t8,1 (retry_cnt++ itself: allowed)
+  880cf2ec lbu t0,0(t6) (delay slot of bnel: executed only on the taken (retry) path)
+window slot stores (gin, spin, spin_ack, dlast, st9, sttx): [0, 8, 12, 2, 4, 6]
+hand-off reads (offset - 128), same order:                  [0, 8, 12, 2, 4, 6]
+slot offsets agree: YES
+hand-off checks: PASS
+
+Canonical listing (C index; S(sp) = a stack slot; EXIT = leaves the
+transaction; (exit-ds) = the delay slot of an exit branch, executed after
+the exit decision; !! = differs other than by stack offset)
+------------------------------------------------------------------------
+!! C0   880ceeec lw       v0,0(s4)               | 880cefb0 lw       v0,0(s3)
+   C1   880ceef0 andi     v0,v0,0xffff           | 880cefb4 andi     v0,v0,0xffff
+   C2   880ceef4 sh       v0,S(sp)               | 880cefb8 sh       v0,S(sp)
+!! C3   880ceef8 sw       s6,0(s0)               | 880cefbc sw       s5,0(s0)
+   C4   880ceefc lw       v0,0(t2)               | 880cefc0 lw       v0,0(t2)
+   C5   880cef00 andi     v0,v0,0x4              | 880cefc4 andi     v0,v0,0x4
+   C6   880cef04 beqz     v0,C28                 | 880cefc8 beqz     v0,C28
+   C7   880cef08 nop                             | 880cefcc nop      
+   C8   880cef0c sw       s1,S(sp)               | 880cefd0 sw       s1,S(sp)
+   C9   880cef10 lw       v0,0(t2)               | 880cefd4 lw       v0,0(t2)
+   C10  880cef14 andi     v0,v0,0x4              | 880cefd8 andi     v0,v0,0x4
+   C11  880cef18 beqz     v0,C28                 | 880cefdc beqz     v0,C28
+   C12  880cef1c nop                             | 880cefe0 nop      
+   C13  880cef20 lw       v0,S(sp)               | 880cefe4 lw       v0,S(sp)
+   C14  880cef24 addiu    v0,v0,-1               | 880cefe8 addiu    v0,v0,-1
+   C15  880cef28 sw       v0,S(sp)               | 880cefec sw       v0,S(sp)
+   C16  880cef2c lw       v1,S(sp)               | 880ceff0 lw       v1,S(sp)
+   C17  880cef30 bne      v1,a3,C21              | 880ceff4 bne      v1,a3,C21
+   C18  880cef34 li       t3,-3                  | 880ceff8 li       t3,-3
+   C19  880cef38 j        EXIT                   | 880ceffc j        EXIT
+   C20  880cef3c (exit-ds) lw s8,40(sp)           | 880cf000 (exit-ds) 00000000  nop
+   C21  880cef5c lw       v0,0(t4)               | 880cf020 lw       v0,0(t4)
+   C22  880cef60 andi     v0,v0,0xffff           | 880cf024 andi     v0,v0,0xffff
+   C23  880cef64 sh       v0,S(sp)               | 880cf028 sh       v0,S(sp)
+   C24  880cef68 lw       v1,0(t2)               | 880cf02c lw       v1,0(t2)
+   C25  880cef6c andi     v1,v1,0x4              | 880cf030 andi     v1,v1,0x4
+   C26  880cef70 bnez     v1,C98                 | 880cf034 bnez     v1,C98
+   C27  880cef74 nop                             | 880cf038 nop      
+   C28  880cef78 lw       v0,0(t2)               | 880cf03c lw       v0,0(t2)
+   C29  880cef7c li       v1,3                   | 880cf040 li       v1,3
+   C30  880cef80 andi     v0,v0,0xffff           | 880cf044 andi     v0,v0,0xffff
+   C31  880cef84 sh       v0,S(sp)               | 880cf048 sh       v0,S(sp)
+   C32  880cef88 addiu    t1,t0,1                | 880cf04c addiu    t1,t0,1
+   C33  880cef8c sw       v1,0(a2)               | 880cf050 sw       v1,0(a2)
+   C34  880cef90 move     a3,t5                  | 880cf054 move     a3,t5
+   C35  880cef94 move     t0,zero                | 880cf058 move     t0,zero
+   C36  880cef98 lbu      v0,0(a3)               | 880cf05c lbu      v0,0(a3)
+   C37  880cef9c lbu      a0,1(a3)               | 880cf060 lbu      a0,1(a3)
+   C38  880cefa0 lw       v1,0(t2)               | 880cf064 lw       v1,0(t2)
+   C39  880cefa4 sll      v0,v0,0x8              | 880cf068 sll      v0,v0,0x8
+   C40  880cefa8 addiu    t0,t0,2                | 880cf06c addiu    t0,t0,2
+   C41  880cefac or       v0,v0,a0               | 880cf070 or       v0,v0,a0
+   C42  880cefb0 andi     v1,v1,0xffff           | 880cf074 andi     v1,v1,0xffff
+   C43  880cefb4 slt      a0,t0,t1               | 880cf078 slt      a0,t0,t1
+   C44  880cefb8 sh       v1,S(sp)               | 880cf07c sh       v1,S(sp)
+   C45  880cefbc addiu    a3,a3,2                | 880cf080 addiu    a3,a3,2
+   C46  880cefc0 sw       v0,0(t4)               | 880cf084 sw       v0,0(t4)
+   C47  880cefc4 bnezl    a0,C37                 | 880cf088 bnezl    a0,C37
+   C48  880cefc8 lbu      v0,0(a3)               | 880cf08c lbu      v0,0(a3)
+   C49  880cefcc li       v0,6                   | 880cf090 li       v0,6
+   C50  880cefd0 sw       v0,0(s2)               | 880cf094 sw       v0,0(s2)
+!! C51  880cefd4 sw       s5,0(s7)               | 880cf098 sw       s4,0(s6)
+   C52  880cefd8 sw       s1,S(sp)               | 880cf09c sw       s1,S(sp)
+   C53  880cefdc lw       v0,0(t7)               | 880cf0a0 lw       v0,0(t7)
+   C54  880cefe0 andi     v0,v0,0x10             | 880cf0a4 andi     v0,v0,0x10
+   C55  880cefe4 bnez     v0,C71                 | 880cf0a8 bnez     v0,C71
+   C56  880cefe8 li       v0,16                  | 880cf0ac li       v0,16
+   C57  880cefec lw       v0,S(sp)               | 880cf0b0 lw       v0,S(sp)
+   C58  880ceff0 addiu    v0,v0,-1               | 880cf0b4 addiu    v0,v0,-1
+   C59  880ceff4 sw       v0,S(sp)               | 880cf0b8 sw       v0,S(sp)
+   C60  880ceff8 lw       v1,S(sp)               | 880cf0bc lw       v1,S(sp)
+   C61  880ceffc li       v0,-1                  | 880cf0c0 li       v0,-1
+   C62  880cf000 bne      v1,v0,C53              | 880cf0c4 bne      v1,v0,C53
+   C63  880cf004 lui      v0,0xbe58              | 880cf0c8 lui      v0,0xbe58
+!! C64  880cf008 ori      a1,s3,0xc              | 880cf0cc ori      a1,s7,0xc
+   C65  880cf00c li       a0,4                   | 880cf0d0 li       a0,4
+   C66  880cf010 ori      v0,v0,0x4              | 880cf0d4 ori      v0,v0,0x4
+   C67  880cf014 li       v1,8                   | 880cf0d8 li       v1,8
+   C68  880cf018 sw       a0,0(v0)               | 880cf0dc sw       a0,0(v0)
+   C69  880cf01c li       t3,-4                  | 880cf0e0 li       t3,-4
+   C70  880cf020 sw       v1,0(a1)               | 880cf0e4 sw       v1,0(a1)
+   C71  880cf054 move     a3,t9                  | 880cf210 move     a3,t9
+   C72  880cf058 move     t3,zero                | 880cf214 move     t3,zero
+   C73  880cf05c li       t0,2                   | 880cf218 li       t0,2
+   C74  880cf060 sw       v0,0(s8)               | 880cf21c sw       v0,0(s8)
+   C75  880cf064 lw       v0,0(t2)               | 880cf220 lw       v0,0(t2)
+   C76  880cf068 slti     t1,t0,16               | 880cf224 slti     t1,t0,16
+   C77  880cf06c andi     v0,v0,0x4              | 880cf228 andi     v0,v0,0x4
+   C78  880cf070 beqz     v0,C93                 | 880cf22c beqz     v0,C93
+   C79  880cf074 addiu    a0,t0,-2               | 880cf230 addiu    a0,t0,-2
+   C80  880cf078 lw       v0,0(t4)               | 880cf234 lw       v0,0(t4)
+   C81  880cf07c andi     v0,v0,0xffff           | 880cf238 andi     v0,v0,0xffff
+   C82  880cf080 bnez     a0,C90                 | 880cf23c bnez     a0,C90
+   C83  880cf084 srl      v1,v0,0x8              | 880cf240 srl      v1,v0,0x8
+   C84  880cf088 move     t3,v1                  | 880cf244 move     t3,v1
+   C85  880cf08c sb       v0,-1(a3)              | 880cf248 sb       v0,-1(a3)
+   C86  880cf090 sb       v1,-2(a3)              | 880cf24c sb       v1,-2(a3)
+   C87  880cf094 addiu    a3,a3,2                | 880cf250 addiu    a3,a3,2
+   C88  880cf098 j        C75                    | 880cf254 j        C75
+   C89  880cf09c addiu    t0,t0,2                | 880cf258 addiu    t0,t0,2
+   C90  880cf0a0 sb       v1,-2(a3)              | 880cf25c sb       v1,-2(a3)
+   C91  880cf0a4 bnez     t1,C87                 | 880cf260 bnez     t1,C87
+   C92  880cf0a8 sb       v0,-1(a3)              | 880cf264 sb       v0,-1(a3)
+   C93  880cf0ac lui      v1,0xbe58              | 880cf268 lui      v1,0xbe58
+   C94  880cf0b0 li       v0,4                   | 880cf26c li       v0,4
+   C95  880cf0b4 ori      v1,v1,0x4              | 880cf270 ori      v1,v1,0x4
+   C96  880cf0b8 sw       v0,0(v1)               | 880cf274 sw       v0,0(v1)
+!! C97  880cf0bc sw       s5,0(s0)               | 880cf278 sw       s4,0(s0)
+   C98  880cef40 lw       v0,S(sp)               | 880cf004 lw       v0,S(sp)
+   C99  880cef44 addiu    v0,v0,-1               | 880cf008 addiu    v0,v0,-1
+   C100 880cef48 sw       v0,S(sp)               | 880cf00c sw       v0,S(sp)
+   C101 880cef4c lw       v1,S(sp)               | 880cf010 lw       v1,S(sp)
+   C102 880cef50 li       v0,-1                  | 880cf014 li       v0,-1
+   C103 880cef54 beq      v1,v0,EXIT             | 880cf018 beq      v1,v0,EXIT
+   C104 880cef58 (exit-ds) li t3,-3               | 880cf01c (exit-ds) li t3,-3
+
+Full listing, baseline Syscon_cmd (window instructions marked *)
+------------------------------------------------------------------------
+  880cee10:	27bdffd0 	addiu	sp,sp,-48
+  880cee14:	3c06be58 	lui	a2,0xbe58
+  880cee18:	3c03be24 	lui	v1,0xbe24
+  880cee1c:	afb30014 	sw	s3,20(sp)
+  880cee20:	3c02000f 	lui	v0,0xf
+  880cee24:	3c13be24 	lui	s3,0xbe24
+  880cee28:	afbe0028 	sw	s8,40(sp)
+  880cee2c:	afb70024 	sw	s7,36(sp)
+  880cee30:	afb60020 	sw	s6,32(sp)
+  880cee34:	afb5001c 	sw	s5,28(sp)
+  880cee38:	afb40018 	sw	s4,24(sp)
+  880cee3c:	afb20010 	sw	s2,16(sp)
+  880cee40:	afb1000c 	sw	s1,12(sp)
+  880cee44:	afb00008 	sw	s0,8(sp)
+  880cee48:	34d20004 	ori	s2,a2,0x4
+  880cee4c:	34ca000c 	ori	t2,a2,0xc
+  880cee50:	34cc0008 	ori	t4,a2,0x8
+  880cee54:	00806821 	move	t5,a0
+  880cee58:	34514240 	ori	s1,v0,0x4240
+  880cee5c:	346f0020 	ori	t7,v1,0x20
+  880cee60:	248e0001 	addiu	t6,a0,1
+  880cee64:	0000c021 	move	t8,zero
+  880cee68:	34740004 	ori	s4,v1,0x4
+  880cee6c:	3470000c 	ori	s0,v1,0xc
+  880cee70:	24150008 	li	s5,8
+  880cee74:	24160008 	li	s6,8
+  880cee78:	34c60020 	ori	a2,a2,0x20
+  880cee7c:	34770008 	ori	s7,v1,0x8
+  880cee80:	367e0024 	ori	s8,s3,0x24
+  880cee84:	24b90002 	addiu	t9,a1,2
+  880cee88:	91c80000 	lbu	t0,0(t6)
+  880cee8c:	110000b8 	beqz	t0,880cf170 <Syscon_cmd+0x360>
+  880cee90:	00002021 	move	a0,zero
+  880cee94:	00003821 	move	a3,zero
+  880cee98:	01a41821 	addu	v1,t5,a0
+  880cee9c:	90620000 	lbu	v0,0(v1)
+  880ceea0:	24840001 	addiu	a0,a0,1
+  880ceea4:	00471021 	addu	v0,v0,a3
+  880ceea8:	1504fffb 	bne	t0,a0,880cee98 <Syscon_cmd+0x88>
+  880ceeac:	304700ff 	andi	a3,v0,0xff
+  880ceeb0:	00071027 	nor	v0,zero,a3
+  880ceeb4:	304700ff 	andi	a3,v0,0xff
+  880ceeb8:	2402ffff 	li	v0,-1
+  880ceebc:	01a81821 	addu	v1,t5,t0
+  880ceec0:	010e2021 	addu	a0,t0,t6
+  880ceec4:	a0670000 	sb	a3,0(v1)
+  880ceec8:	a0820000 	sb	v0,0(a0)
+  880ceecc:	2407000e 	li	a3,14
+  880ceed0:	a0a2000f 	sb	v0,15(a1)
+  880ceed4:	00a71021 	addu	v0,a1,a3
+  880ceed8:	2403ffff 	li	v1,-1
+  880ceedc:	24e7ffff 	addiu	a3,a3,-1
+  880ceee0:	2404ffff 	li	a0,-1
+  880ceee4:	14e4fffb 	bne	a3,a0,880ceed4 <Syscon_cmd+0xc4>
+  880ceee8:	a0430000 	sb	v1,0(v0)
+* 880ceeec:	8e820000 	lw	v0,0(s4)
+* 880ceef0:	3042ffff 	andi	v0,v0,0xffff
+* 880ceef4:	a7a20000 	sh	v0,0(sp)
+* 880ceef8:	ae160000 	sw	s6,0(s0)
+* 880ceefc:	8d420000 	lw	v0,0(t2)
+* 880cef00:	30420004 	andi	v0,v0,0x4
+* 880cef04:	1040001c 	beqz	v0,880cef78 <Syscon_cmd+0x168>
+* 880cef08:	00000000 	nop
+* 880cef0c:	afb10004 	sw	s1,4(sp)
+* 880cef10:	8d420000 	lw	v0,0(t2)
+* 880cef14:	30420004 	andi	v0,v0,0x4
+* 880cef18:	10400017 	beqz	v0,880cef78 <Syscon_cmd+0x168>
+* 880cef1c:	00000000 	nop
+* 880cef20:	8fa20004 	lw	v0,4(sp)
+* 880cef24:	2442ffff 	addiu	v0,v0,-1
+* 880cef28:	afa20004 	sw	v0,4(sp)
+* 880cef2c:	8fa30004 	lw	v1,4(sp)
+* 880cef30:	1467000a 	bne	v1,a3,880cef5c <Syscon_cmd+0x14c>
+* 880cef34:	240bfffd 	li	t3,-3
+* 880cef38:	0a033c51 	j	880cf144 <Syscon_cmd+0x334>
+* 880cef3c:	8fbe0028 	lw	s8,40(sp)
+* 880cef40:	8fa20004 	lw	v0,4(sp)
+* 880cef44:	2442ffff 	addiu	v0,v0,-1
+* 880cef48:	afa20004 	sw	v0,4(sp)
+* 880cef4c:	8fa30004 	lw	v1,4(sp)
+* 880cef50:	2402ffff 	li	v0,-1
+* 880cef54:	1062007a 	beq	v1,v0,880cf140 <Syscon_cmd+0x330>
+* 880cef58:	240bfffd 	li	t3,-3
+* 880cef5c:	8d820000 	lw	v0,0(t4)
+* 880cef60:	3042ffff 	andi	v0,v0,0xffff
+* 880cef64:	a7a20000 	sh	v0,0(sp)
+* 880cef68:	8d430000 	lw	v1,0(t2)
+* 880cef6c:	30630004 	andi	v1,v1,0x4
+* 880cef70:	1460fff3 	bnez	v1,880cef40 <Syscon_cmd+0x130>
+* 880cef74:	00000000 	nop
+* 880cef78:	8d420000 	lw	v0,0(t2)
+* 880cef7c:	24030003 	li	v1,3
+* 880cef80:	3042ffff 	andi	v0,v0,0xffff
+* 880cef84:	a7a20000 	sh	v0,0(sp)
+* 880cef88:	25090001 	addiu	t1,t0,1
+* 880cef8c:	acc30000 	sw	v1,0(a2)
+* 880cef90:	01a03821 	move	a3,t5
+* 880cef94:	00004021 	move	t0,zero
+* 880cef98:	90e20000 	lbu	v0,0(a3)
+* 880cef9c:	90e40001 	lbu	a0,1(a3)
+* 880cefa0:	8d430000 	lw	v1,0(t2)
+* 880cefa4:	00021200 	sll	v0,v0,0x8
+* 880cefa8:	25080002 	addiu	t0,t0,2
+* 880cefac:	00441025 	or	v0,v0,a0
+* 880cefb0:	3063ffff 	andi	v1,v1,0xffff
+* 880cefb4:	0109202a 	slt	a0,t0,t1
+* 880cefb8:	a7a30000 	sh	v1,0(sp)
+* 880cefbc:	24e70002 	addiu	a3,a3,2
+* 880cefc0:	ad820000 	sw	v0,0(t4)
+* 880cefc4:	5480fff5 	bnezl	a0,880cef9c <Syscon_cmd+0x18c>
+* 880cefc8:	90e20000 	lbu	v0,0(a3)
+* 880cefcc:	24020006 	li	v0,6
+* 880cefd0:	ae420000 	sw	v0,0(s2)
+* 880cefd4:	aef50000 	sw	s5,0(s7)
+* 880cefd8:	afb10004 	sw	s1,4(sp)
+* 880cefdc:	8de20000 	lw	v0,0(t7)
+* 880cefe0:	30420010 	andi	v0,v0,0x10
+* 880cefe4:	1440001b 	bnez	v0,880cf054 <Syscon_cmd+0x244>
+* 880cefe8:	24020010 	li	v0,16
+* 880cefec:	8fa20004 	lw	v0,4(sp)
+* 880ceff0:	2442ffff 	addiu	v0,v0,-1
+* 880ceff4:	afa20004 	sw	v0,4(sp)
+* 880ceff8:	8fa30004 	lw	v1,4(sp)
+* 880ceffc:	2402ffff 	li	v0,-1
+* 880cf000:	1462fff6 	bne	v1,v0,880cefdc <Syscon_cmd+0x1cc>
+* 880cf004:	3c02be58 	lui	v0,0xbe58
+* 880cf008:	3665000c 	ori	a1,s3,0xc
+* 880cf00c:	24040004 	li	a0,4
+* 880cf010:	34420004 	ori	v0,v0,0x4
+* 880cf014:	24030008 	li	v1,8
+* 880cf018:	ac440000 	sw	a0,0(v0)
+* 880cf01c:	240bfffc 	li	t3,-4
+* 880cf020:	aca30000 	sw	v1,0(a1)
+  880cf024:	8fbe0028 	lw	s8,40(sp)
+  880cf028:	8fb70024 	lw	s7,36(sp)
+  880cf02c:	8fb60020 	lw	s6,32(sp)
+  880cf030:	8fb5001c 	lw	s5,28(sp)
+  880cf034:	8fb40018 	lw	s4,24(sp)
+  880cf038:	8fb30014 	lw	s3,20(sp)
+  880cf03c:	8fb20010 	lw	s2,16(sp)
+  880cf040:	8fb1000c 	lw	s1,12(sp)
+  880cf044:	8fb00008 	lw	s0,8(sp)
+  880cf048:	01601021 	move	v0,t3
+  880cf04c:	03e00008 	jr	ra
+  880cf050:	27bd0030 	addiu	sp,sp,48
+* 880cf054:	03203821 	move	a3,t9
+* 880cf058:	00005821 	move	t3,zero
+* 880cf05c:	24080002 	li	t0,2
+* 880cf060:	afc20000 	sw	v0,0(s8)
+* 880cf064:	8d420000 	lw	v0,0(t2)
+* 880cf068:	29090010 	slti	t1,t0,16
+* 880cf06c:	30420004 	andi	v0,v0,0x4
+* 880cf070:	1040000e 	beqz	v0,880cf0ac <Syscon_cmd+0x29c>
+* 880cf074:	2504fffe 	addiu	a0,t0,-2
+* 880cf078:	8d820000 	lw	v0,0(t4)
+* 880cf07c:	3042ffff 	andi	v0,v0,0xffff
+* 880cf080:	14800007 	bnez	a0,880cf0a0 <Syscon_cmd+0x290>
+* 880cf084:	00021a02 	srl	v1,v0,0x8
+* 880cf088:	00605821 	move	t3,v1
+* 880cf08c:	a0e2ffff 	sb	v0,-1(a3)
+* 880cf090:	a0e3fffe 	sb	v1,-2(a3)
+* 880cf094:	24e70002 	addiu	a3,a3,2
+* 880cf098:	0a033c19 	j	880cf064 <Syscon_cmd+0x254>
+* 880cf09c:	25080002 	addiu	t0,t0,2
+* 880cf0a0:	a0e3fffe 	sb	v1,-2(a3)
+* 880cf0a4:	1520fffb 	bnez	t1,880cf094 <Syscon_cmd+0x284>
+* 880cf0a8:	a0e2ffff 	sb	v0,-1(a3)
+* 880cf0ac:	3c03be58 	lui	v1,0xbe58
+* 880cf0b0:	24020004 	li	v0,4
+* 880cf0b4:	34630004 	ori	v1,v1,0x4
+* 880cf0b8:	ac620000 	sw	v0,0(v1)
+* 880cf0bc:	ae150000 	sw	s5,0(s0)
+  880cf0c0:	51600014 	beqzl	t3,880cf114 <Syscon_cmd+0x304>
+  880cf0c4:	93220000 	lbu	v0,0(t9)
+  880cf0c8:	90a40001 	lbu	a0,1(a1)
+  880cf0cc:	28820003 	slti	v0,a0,3
+  880cf0d0:	5440000f 	bnezl	v0,880cf110 <Syscon_cmd+0x300>
+  880cf0d4:	240bfffe 	li	t3,-2
+  880cf0d8:	00853821 	addu	a3,a0,a1
+  880cf0dc:	00a01821 	move	v1,a1
+  880cf0e0:	00002021 	move	a0,zero
+  880cf0e4:	90620000 	lbu	v0,0(v1)
+  880cf0e8:	24630001 	addiu	v1,v1,1
+  880cf0ec:	00821021 	addu	v0,a0,v0
+  880cf0f0:	1467fffc 	bne	v1,a3,880cf0e4 <Syscon_cmd+0x2d4>
+  880cf0f4:	304400ff 	andi	a0,v0,0xff
+  880cf0f8:	00041027 	nor	v0,zero,a0
+  880cf0fc:	90e30000 	lbu	v1,0(a3)
+  880cf100:	304200ff 	andi	v0,v0,0xff
+  880cf104:	50430003 	beql	v0,v1,880cf114 <Syscon_cmd+0x304>
+  880cf108:	93220000 	lbu	v0,0(t9)
+  880cf10c:	240bfffe 	li	t3,-2
+  880cf110:	93220000 	lbu	v0,0(t9)
+  880cf114:	24030001 	li	v1,1
+  880cf118:	2442ff80 	addiu	v0,v0,-128
+  880cf11c:	0062102b 	sltu	v0,v1,v0
+  880cf120:	5440ffc1 	bnezl	v0,880cf028 <Syscon_cmd+0x218>
+  880cf124:	8fbe0028 	lw	s8,40(sp)
+  880cf128:	27180001 	addiu	t8,t8,1
+  880cf12c:	24020010 	li	v0,16
+  880cf130:	5702ff56 	bnel	t8,v0,880cee8c <Syscon_cmd+0x7c>
+  880cf134:	91c80000 	lbu	t0,0(t6)
+  880cf138:	0a033c09 	j	880cf024 <Syscon_cmd+0x214>
+  880cf13c:	240bfffb 	li	t3,-5
+  880cf140:	8fbe0028 	lw	s8,40(sp)
+  880cf144:	8fb70024 	lw	s7,36(sp)
+  880cf148:	8fb60020 	lw	s6,32(sp)
+  880cf14c:	8fb5001c 	lw	s5,28(sp)
+  880cf150:	8fb40018 	lw	s4,24(sp)
+  880cf154:	8fb30014 	lw	s3,20(sp)
+  880cf158:	8fb20010 	lw	s2,16(sp)
+  880cf15c:	8fb1000c 	lw	s1,12(sp)
+  880cf160:	8fb00008 	lw	s0,8(sp)
+  880cf164:	01601021 	move	v0,t3
+  880cf168:	03e00008 	jr	ra
+  880cf16c:	27bd0030 	addiu	sp,sp,48
+  880cf170:	0a033bae 	j	880ceeb8 <Syscon_cmd+0xa8>
+  880cf174:	240700ff 	li	a3,255
+
+Full listing, new Syscon_cmd (window instructions marked *)
+------------------------------------------------------------------------
+  880ceed0:	27bdffc8 	addiu	sp,sp,-56
+  880ceed4:	3c06be58 	lui	a2,0xbe58
+  880ceed8:	3c03be24 	lui	v1,0xbe24
+  880ceedc:	afb7002c 	sw	s7,44(sp)
+  880ceee0:	3c02000f 	lui	v0,0xf
+  880ceee4:	3c17be24 	lui	s7,0xbe24
+  880ceee8:	afbe0030 	sw	s8,48(sp)
+  880ceeec:	afb60028 	sw	s6,40(sp)
+  880ceef0:	afb50024 	sw	s5,36(sp)
+  880ceef4:	afb40020 	sw	s4,32(sp)
+  880ceef8:	afb3001c 	sw	s3,28(sp)
+  880ceefc:	afb20018 	sw	s2,24(sp)
+  880cef00:	afb10014 	sw	s1,20(sp)
+  880cef04:	afb00010 	sw	s0,16(sp)
+  880cef08:	34d20004 	ori	s2,a2,0x4
+  880cef0c:	34ca000c 	ori	t2,a2,0xc
+  880cef10:	34cc0008 	ori	t4,a2,0x8
+  880cef14:	00806821 	move	t5,a0
+  880cef18:	34514240 	ori	s1,v0,0x4240
+  880cef1c:	346f0020 	ori	t7,v1,0x20
+  880cef20:	248e0001 	addiu	t6,a0,1
+  880cef24:	0000c021 	move	t8,zero
+  880cef28:	34730004 	ori	s3,v1,0x4
+  880cef2c:	3470000c 	ori	s0,v1,0xc
+  880cef30:	24140008 	li	s4,8
+  880cef34:	24150008 	li	s5,8
+  880cef38:	34c60020 	ori	a2,a2,0x20
+  880cef3c:	34760008 	ori	s6,v1,0x8
+  880cef40:	36fe0024 	ori	s8,s7,0x24
+  880cef44:	24b90002 	addiu	t9,a1,2
+  880cef48:	91c80000 	lbu	t0,0(t6)
+  880cef4c:	afa00008 	sw	zero,8(sp)
+  880cef50:	110000e9 	beqz	t0,880cf2f8 <Syscon_cmd+0x428>
+  880cef54:	00002021 	move	a0,zero
+  880cef58:	00003821 	move	a3,zero
+  880cef5c:	01a41821 	addu	v1,t5,a0
+  880cef60:	90620000 	lbu	v0,0(v1)
+  880cef64:	24840001 	addiu	a0,a0,1
+  880cef68:	00471021 	addu	v0,v0,a3
+  880cef6c:	1504fffb 	bne	t0,a0,880cef5c <Syscon_cmd+0x8c>
+  880cef70:	304700ff 	andi	a3,v0,0xff
+  880cef74:	00071027 	nor	v0,zero,a3
+  880cef78:	304700ff 	andi	a3,v0,0xff
+  880cef7c:	2402ffff 	li	v0,-1
+  880cef80:	01a81821 	addu	v1,t5,t0
+  880cef84:	010e2021 	addu	a0,t0,t6
+  880cef88:	a0670000 	sb	a3,0(v1)
+  880cef8c:	a0820000 	sb	v0,0(a0)
+  880cef90:	2407000e 	li	a3,14
+  880cef94:	a0a2000f 	sb	v0,15(a1)
+  880cef98:	00a71021 	addu	v0,a1,a3
+  880cef9c:	2403ffff 	li	v1,-1
+  880cefa0:	24e7ffff 	addiu	a3,a3,-1
+  880cefa4:	2404ffff 	li	a0,-1
+  880cefa8:	14e4fffb 	bne	a3,a0,880cef98 <Syscon_cmd+0xc8>
+  880cefac:	a0430000 	sb	v1,0(v0)
+* 880cefb0:	8e620000 	lw	v0,0(s3)
+* 880cefb4:	3042ffff 	andi	v0,v0,0xffff
+* 880cefb8:	a7a20000 	sh	v0,0(sp)
+* 880cefbc:	ae150000 	sw	s5,0(s0)
+* 880cefc0:	8d420000 	lw	v0,0(t2)
+* 880cefc4:	30420004 	andi	v0,v0,0x4
+* 880cefc8:	1040001c 	beqz	v0,880cf03c <Syscon_cmd+0x16c>
+* 880cefcc:	00000000 	nop
+* 880cefd0:	afb10008 	sw	s1,8(sp)
+* 880cefd4:	8d420000 	lw	v0,0(t2)
+* 880cefd8:	30420004 	andi	v0,v0,0x4
+* 880cefdc:	10400017 	beqz	v0,880cf03c <Syscon_cmd+0x16c>
+* 880cefe0:	00000000 	nop
+* 880cefe4:	8fa20008 	lw	v0,8(sp)
+* 880cefe8:	2442ffff 	addiu	v0,v0,-1
+* 880cefec:	afa20008 	sw	v0,8(sp)
+* 880ceff0:	8fa30008 	lw	v1,8(sp)
+* 880ceff4:	1467000a 	bne	v1,a3,880cf020 <Syscon_cmd+0x150>
+* 880ceff8:	240bfffd 	li	t3,-3
+* 880ceffc:	0a033c3a 	j	880cf0e8 <Syscon_cmd+0x218>
+* 880cf000:	00000000 	nop
+* 880cf004:	8fa20008 	lw	v0,8(sp)
+* 880cf008:	2442ffff 	addiu	v0,v0,-1
+* 880cf00c:	afa20008 	sw	v0,8(sp)
+* 880cf010:	8fa30008 	lw	v1,8(sp)
+* 880cf014:	2402ffff 	li	v0,-1
+* 880cf018:	10620033 	beq	v1,v0,880cf0e8 <Syscon_cmd+0x218>
+* 880cf01c:	240bfffd 	li	t3,-3
+* 880cf020:	8d820000 	lw	v0,0(t4)
+* 880cf024:	3042ffff 	andi	v0,v0,0xffff
+* 880cf028:	a7a20002 	sh	v0,2(sp)
+* 880cf02c:	8d430000 	lw	v1,0(t2)
+* 880cf030:	30630004 	andi	v1,v1,0x4
+* 880cf034:	1460fff3 	bnez	v1,880cf004 <Syscon_cmd+0x134>
+* 880cf038:	00000000 	nop
+* 880cf03c:	8d420000 	lw	v0,0(t2)
+* 880cf040:	24030003 	li	v1,3
+* 880cf044:	3042ffff 	andi	v0,v0,0xffff
+* 880cf048:	a7a20004 	sh	v0,4(sp)
+* 880cf04c:	25090001 	addiu	t1,t0,1
+* 880cf050:	acc30000 	sw	v1,0(a2)
+* 880cf054:	01a03821 	move	a3,t5
+* 880cf058:	00004021 	move	t0,zero
+* 880cf05c:	90e20000 	lbu	v0,0(a3)
+* 880cf060:	90e40001 	lbu	a0,1(a3)
+* 880cf064:	8d430000 	lw	v1,0(t2)
+* 880cf068:	00021200 	sll	v0,v0,0x8
+* 880cf06c:	25080002 	addiu	t0,t0,2
+* 880cf070:	00441025 	or	v0,v0,a0
+* 880cf074:	3063ffff 	andi	v1,v1,0xffff
+* 880cf078:	0109202a 	slt	a0,t0,t1
+* 880cf07c:	a7a30006 	sh	v1,6(sp)
+* 880cf080:	24e70002 	addiu	a3,a3,2
+* 880cf084:	ad820000 	sw	v0,0(t4)
+* 880cf088:	5480fff5 	bnezl	a0,880cf060 <Syscon_cmd+0x190>
+* 880cf08c:	90e20000 	lbu	v0,0(a3)
+* 880cf090:	24020006 	li	v0,6
+* 880cf094:	ae420000 	sw	v0,0(s2)
+* 880cf098:	aed40000 	sw	s4,0(s6)
+* 880cf09c:	afb1000c 	sw	s1,12(sp)
+* 880cf0a0:	8de20000 	lw	v0,0(t7)
+* 880cf0a4:	30420010 	andi	v0,v0,0x10
+* 880cf0a8:	14400059 	bnez	v0,880cf210 <Syscon_cmd+0x340>
+* 880cf0ac:	24020010 	li	v0,16
+* 880cf0b0:	8fa2000c 	lw	v0,12(sp)
+* 880cf0b4:	2442ffff 	addiu	v0,v0,-1
+* 880cf0b8:	afa2000c 	sw	v0,12(sp)
+* 880cf0bc:	8fa3000c 	lw	v1,12(sp)
+* 880cf0c0:	2402ffff 	li	v0,-1
+* 880cf0c4:	1462fff6 	bne	v1,v0,880cf0a0 <Syscon_cmd+0x1d0>
+* 880cf0c8:	3c02be58 	lui	v0,0xbe58
+* 880cf0cc:	36e5000c 	ori	a1,s7,0xc
+* 880cf0d0:	24040004 	li	a0,4
+* 880cf0d4:	34420004 	ori	v0,v0,0x4
+* 880cf0d8:	24030008 	li	v1,8
+* 880cf0dc:	ac440000 	sw	a0,0(v0)
+* 880cf0e0:	240bfffc 	li	t3,-4
+* 880cf0e4:	aca30000 	sw	v1,0(a1)
+  880cf0e8:	27bdff80 	addiu	sp,sp,-128
+  880cf0ec:	afa10030 	sw	at,48(sp)
+  880cf0f0:	afa20034 	sw	v0,52(sp)
+  880cf0f4:	afa30038 	sw	v1,56(sp)
+  880cf0f8:	afa4003c 	sw	a0,60(sp)
+  880cf0fc:	afa50040 	sw	a1,64(sp)
+  880cf100:	afa60044 	sw	a2,68(sp)
+  880cf104:	afa70048 	sw	a3,72(sp)
+  880cf108:	afa8004c 	sw	t0,76(sp)
+  880cf10c:	afa90050 	sw	t1,80(sp)
+  880cf110:	afaa0054 	sw	t2,84(sp)
+  880cf114:	afab0058 	sw	t3,88(sp)
+  880cf118:	afac005c 	sw	t4,92(sp)
+  880cf11c:	afad0060 	sw	t5,96(sp)
+  880cf120:	afae0064 	sw	t6,100(sp)
+  880cf124:	afaf0068 	sw	t7,104(sp)
+  880cf128:	afb8006c 	sw	t8,108(sp)
+  880cf12c:	afb90070 	sw	t9,112(sp)
+  880cf130:	afbf0074 	sw	ra,116(sp)
+  880cf134:	00000810 	mfhi	at
+  880cf138:	afa10078 	sw	at,120(sp)
+  880cf13c:	00000812 	mflo	at
+  880cf140:	afa1007c 	sw	at,124(sp)
+  880cf144:	97a10080 	lhu	at,128(sp)
+  880cf148:	afa10010 	sw	at,16(sp)
+  880cf14c:	8fa10088 	lw	at,136(sp)
+  880cf150:	afa10014 	sw	at,20(sp)
+  880cf154:	8fa1008c 	lw	at,140(sp)
+  880cf158:	afa10018 	sw	at,24(sp)
+  880cf15c:	97a10082 	lhu	at,130(sp)
+  880cf160:	afa1001c 	sw	at,28(sp)
+  880cf164:	97a10084 	lhu	at,132(sp)
+  880cf168:	afa10020 	sw	at,32(sp)
+  880cf16c:	97a10086 	lhu	at,134(sp)
+  880cf170:	afa10024 	sw	at,36(sp)
+  880cf174:	afa80028 	sw	t0,40(sp)
+  880cf178:	afb8002c 	sw	t8,44(sp)
+  880cf17c:	0e03478f 	jal	880d1e3c <psc_xfer_out>
+  880cf180:	27a40010 	addiu	a0,sp,16
+  880cf184:	8fa10078 	lw	at,120(sp)
+  880cf188:	00200011 	mthi	at
+  880cf18c:	8fa1007c 	lw	at,124(sp)
+  880cf190:	00200013 	mtlo	at
+  880cf194:	8fa10030 	lw	at,48(sp)
+  880cf198:	8fa20034 	lw	v0,52(sp)
+  880cf19c:	8fa30038 	lw	v1,56(sp)
+  880cf1a0:	8fa4003c 	lw	a0,60(sp)
+  880cf1a4:	8fa50040 	lw	a1,64(sp)
+  880cf1a8:	8fa60044 	lw	a2,68(sp)
+  880cf1ac:	8fa70048 	lw	a3,72(sp)
+  880cf1b0:	8fa8004c 	lw	t0,76(sp)
+  880cf1b4:	8fa90050 	lw	t1,80(sp)
+  880cf1b8:	8faa0054 	lw	t2,84(sp)
+  880cf1bc:	8fab0058 	lw	t3,88(sp)
+  880cf1c0:	8fac005c 	lw	t4,92(sp)
+  880cf1c4:	8fad0060 	lw	t5,96(sp)
+  880cf1c8:	8fae0064 	lw	t6,100(sp)
+  880cf1cc:	8faf0068 	lw	t7,104(sp)
+  880cf1d0:	8fb8006c 	lw	t8,108(sp)
+  880cf1d4:	8fb90070 	lw	t9,112(sp)
+  880cf1d8:	8fbf0074 	lw	ra,116(sp)
+  880cf1dc:	27bd0080 	addiu	sp,sp,128
+  880cf1e0:	8fbe0030 	lw	s8,48(sp)
+  880cf1e4:	8fb7002c 	lw	s7,44(sp)
+  880cf1e8:	8fb60028 	lw	s6,40(sp)
+  880cf1ec:	8fb50024 	lw	s5,36(sp)
+  880cf1f0:	8fb40020 	lw	s4,32(sp)
+  880cf1f4:	8fb3001c 	lw	s3,28(sp)
+  880cf1f8:	8fb20018 	lw	s2,24(sp)
+  880cf1fc:	8fb10014 	lw	s1,20(sp)
+  880cf200:	8fb00010 	lw	s0,16(sp)
+  880cf204:	01601021 	move	v0,t3
+  880cf208:	03e00008 	jr	ra
+  880cf20c:	27bd0038 	addiu	sp,sp,56
+* 880cf210:	03203821 	move	a3,t9
+* 880cf214:	00005821 	move	t3,zero
+* 880cf218:	24080002 	li	t0,2
+* 880cf21c:	afc20000 	sw	v0,0(s8)
+* 880cf220:	8d420000 	lw	v0,0(t2)
+* 880cf224:	29090010 	slti	t1,t0,16
+* 880cf228:	30420004 	andi	v0,v0,0x4
+* 880cf22c:	1040000e 	beqz	v0,880cf268 <Syscon_cmd+0x398>
+* 880cf230:	2504fffe 	addiu	a0,t0,-2
+* 880cf234:	8d820000 	lw	v0,0(t4)
+* 880cf238:	3042ffff 	andi	v0,v0,0xffff
+* 880cf23c:	14800007 	bnez	a0,880cf25c <Syscon_cmd+0x38c>
+* 880cf240:	00021a02 	srl	v1,v0,0x8
+* 880cf244:	00605821 	move	t3,v1
+* 880cf248:	a0e2ffff 	sb	v0,-1(a3)
+* 880cf24c:	a0e3fffe 	sb	v1,-2(a3)
+* 880cf250:	24e70002 	addiu	a3,a3,2
+* 880cf254:	0a033c88 	j	880cf220 <Syscon_cmd+0x350>
+* 880cf258:	25080002 	addiu	t0,t0,2
+* 880cf25c:	a0e3fffe 	sb	v1,-2(a3)
+* 880cf260:	1520fffb 	bnez	t1,880cf250 <Syscon_cmd+0x380>
+* 880cf264:	a0e2ffff 	sb	v0,-1(a3)
+* 880cf268:	3c03be58 	lui	v1,0xbe58
+* 880cf26c:	24020004 	li	v0,4
+* 880cf270:	34630004 	ori	v1,v1,0x4
+* 880cf274:	ac620000 	sw	v0,0(v1)
+* 880cf278:	ae140000 	sw	s4,0(s0)
+  880cf27c:	51600014 	beqzl	t3,880cf2d0 <Syscon_cmd+0x400>
+  880cf280:	93220000 	lbu	v0,0(t9)
+  880cf284:	90a40001 	lbu	a0,1(a1)
+  880cf288:	28820003 	slti	v0,a0,3
+  880cf28c:	5440000f 	bnezl	v0,880cf2cc <Syscon_cmd+0x3fc>
+  880cf290:	240bfffe 	li	t3,-2
+  880cf294:	00853821 	addu	a3,a0,a1
+  880cf298:	00a01821 	move	v1,a1
+  880cf29c:	00002021 	move	a0,zero
+  880cf2a0:	90620000 	lbu	v0,0(v1)
+  880cf2a4:	24630001 	addiu	v1,v1,1
+  880cf2a8:	00821021 	addu	v0,a0,v0
+  880cf2ac:	1467fffc 	bne	v1,a3,880cf2a0 <Syscon_cmd+0x3d0>
+  880cf2b0:	304400ff 	andi	a0,v0,0xff
+  880cf2b4:	00041027 	nor	v0,zero,a0
+  880cf2b8:	90e30000 	lbu	v1,0(a3)
+  880cf2bc:	304200ff 	andi	v0,v0,0xff
+  880cf2c0:	50430003 	beql	v0,v1,880cf2d0 <Syscon_cmd+0x400>
+  880cf2c4:	93220000 	lbu	v0,0(t9)
+  880cf2c8:	240bfffe 	li	t3,-2
+  880cf2cc:	93220000 	lbu	v0,0(t9)
+  880cf2d0:	24030001 	li	v1,1
+  880cf2d4:	2442ff80 	addiu	v0,v0,-128
+  880cf2d8:	0062102b 	sltu	v0,v1,v0
+  880cf2dc:	1440ff82 	bnez	v0,880cf0e8 <Syscon_cmd+0x218>
+  880cf2e0:	24020010 	li	v0,16
+  880cf2e4:	27180001 	addiu	t8,t8,1
+  880cf2e8:	5702ff18 	bnel	t8,v0,880cef4c <Syscon_cmd+0x7c>
+  880cf2ec:	91c80000 	lbu	t0,0(t6)
+  880cf2f0:	0a033c3a 	j	880cf0e8 <Syscon_cmd+0x218>
+  880cf2f4:	240bfffb 	li	t3,-5
+  880cf2f8:	0a033bdf 	j	880cef7c <Syscon_cmd+0xac>
+  880cf2fc:	240700ff 	li	a3,255

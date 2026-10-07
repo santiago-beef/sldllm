@@ -1,0 +1,2 @@
+log: /home/ubuntu/psp/work/logs/build-20261006T021722Z.log
+out: /home/ubuntu/psp/work/out/20261006T021722Z

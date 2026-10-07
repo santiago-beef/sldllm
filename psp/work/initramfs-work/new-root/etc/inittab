@@ -1,0 +1,17 @@
+# /etc/inittab
+
+::sysinit:/etc/rc.sysinit
+
+# Launch shells for the SIO console
+#::respawn:-/bin/msh
+
+# Launch shells for the LCD console
+tty1::respawn:-/bin/msh
+tty2::respawn:-/bin/msh
+tty3::respawn:-/bin/msh
+tty4::respawn:-/bin/msh
+#tty5::respawn:-/bin/msh
+#tty6::respawn:-/bin/msh
+
+::shutdown:/bin/umount -a -r
+

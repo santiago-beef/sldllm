@@ -1,0 +1,40 @@
+# PSC-REGMAP 2
+# regmap.txt (DESIGN 10.6) for /home/ubuntu/psp/work/out/20261006T052947Z
+# banner: Linux version 2.6.22 (root@psp-work-build) (gcc version 4.2.1) #1 PREEMPT Tue Oct 6 05:32:47 UTC 2026
+# <steps> <var> <slot> <offset> <epc>  [# where]   (grammar: work/decoder/psc_maps.py)
+# var = slot - offset. Slots r[0..13] = $2..$15, r[14] = $24 (t8), r[15] = $25 (t9),
+# the order of W r[] / lc_r[] (DESIGN 1.3); zero = 0; stack+N = Syscon_cmd stack slot
+# (not in a W record); epc "-" = the whole step, else start-end (hex, end exclusive),
+# and a row with a range wins. i at S11 = bytes pushed (k = i / 2, P2); i at S15-S18 =
+# bytes popped (j = i / 2, P6). i and ptr are in registers 2..15 at S11 and S16-S18
+# (t0 = $8, a3 = $7), as in the baseline (syscon.o +0x180..+0x1b4, +0x244..+0x298):
+# k and j are recoverable from W r[] and lc_r[] (R10).
+all      tx_buf     r[11]       0 -                  # t5 = a0 from +0x44; not written after the prologue
+all      rx_buf     r[15]       2 -                  # t9 = rx_buf + 2 from +0x74 (a1 is reused by the -4 teardown)
+all      retry_cnt  r[14]       0 -                  # t8: 0 at +0x54, +1 at +0x414
+S0-S3    cnt        r[6]        0 -                  # t0 = tx_buf[1] (lbu at +0x78; at +0x41c on a retry)
+S1       cnt        -           0 880cef48-880cef4c  # the load at +0x78 has not run
+S11      cnt        r[7]        1 880cf050-880cf090  # t1 = cnt + 1 (+0x17c)
+S11      i          zero        0 880cf04c-880cf050  # TX loop not started: nothing pushed
+S11      i          zero        0 880cf054-880cf05c  # TX loop not started: nothing pushed
+S11      i          r[6]        0 880cf05c-880cf070  # t0 = i (bytes pushed) until addiu t0 at +0x19c
+S11      i          r[6]        2 880cf070-880cf088  # t0 = i + 2 from +0x19c until the push at +0x1b4 runs
+S11      i          r[6]        0 880cf088-880cf090  # push done: t0 = i
+S11      ptr        r[5]        0 880cf058-880cf084  # a3 = tx_buf + i (move a3,t5 at +0x184)
+S11      ptr        r[5]        2 880cf084-880cf088  # a3 advanced at +0x1b0, push at +0x1b4 not run
+S11      ptr        r[5]        0 880cf088-880cf090  # push done: a3 = tx_buf + i
+S8       spin       stack+8     0 -                  # drain counter, stack slot of Syscon_cmd
+S14      spin_ack   stack+12    0 -                  # ACK counter, stack slot of Syscon_cmd
+S15      i          zero        0 -                  # nothing popped yet
+S15      result     r[9]        0 880cf218-880cf220  # t3 = 0 from +0x344
+S16-S18  result     r[9]        0 -                  # t3
+S16-S18  i          r[6]        2 880cf220-880cf238  # t0 = i + 2 (li t0,2 at +0x348) up to the data load at +0x364
+S16-S18  i          r[6]        0 880cf238-880cf268  # the data load ran: this word is popped, t0 = i until addiu t0 at +0x388
+S16-S18  pending    zero       -1 880cf224-880cf238  # 1: status loaded at +0x350, data load at +0x364 not run (10.7 P6 "between its status test and its data read")
+S16-S18  pending    zero        0 -                  # 0 elsewhere in the loop
+S16-S18  ptr        r[5]        2 880cf220-880cf238  # a3 = rx_buf + i + 2 (move a3,t9 at +0x340)
+S16-S18  ptr        r[5]        0 880cf238-880cf254  # a3 = rx_buf + i
+S16-S18  ptr        r[5]        2 880cf254-880cf25c  # a3 advanced at +0x380, t0 not yet (delay slot +0x388)
+S16-S18  ptr        r[5]        0 880cf25c-880cf268  # a3 = rx_buf + i (stores before the advance)
+S21-S22  result     r[9]        0 -                  # t3
+LEDRMW   loaded     r[3]        0 -                  # a1 in both read-modify-writes of psp_led_ctrl

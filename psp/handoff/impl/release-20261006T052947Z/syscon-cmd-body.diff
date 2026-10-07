@@ -1,0 +1,45 @@
+--- baseline syscon.c Syscon_cmd (line 61)
++++ stage2-trace syscon.c Syscon_cmd (line 107)
+@@ -12,2 +12,7 @@
+ 	int retry_cnt = 0;
++	/* PSC (DESIGN 2.1 A3): further capture slots. dmy keeps the S5 load
++	 * (gpio_in) and spin the drain counter; declared after the original
++	 * locals so the code generated for S5..S20 does not change (7.2). */
++	volatile u16 dlast, st9, sttx;
++	vu32 spin_ack;
+ 
+@@ -15,2 +20,3 @@
+ retry:
++	spin = 0;	/* PSC 2.1 A2: "drain loop not entered" (memory only, before S5) */
+ 	// calc & set TX sum
+@@ -52,4 +58,4 @@
+ 		{
+-			if(spin-- == 0) return -3;
+-			dmy = REG32(0xbe580008);
++			if(spin-- == 0) { result = -3; goto out; }	/* PSC A4 */
++			dlast = REG32(0xbe580008);	/* PSC A3: was dmy */
+ //Kprintf("%04X:",dmy);
+@@ -58,3 +64,3 @@
+ 	}
+-	dmy = REG32(0xbe58000c);
++	st9 = REG32(0xbe58000c);	/* PSC A3: was dmy */
+ ;
+@@ -69,3 +75,3 @@
+ 	{
+-		dmy = REG32(0xbe58000c);
++		sttx = REG32(0xbe58000c);	/* PSC A3: was dmy */
+ //Kprintf("%04X ",(ptr[0]<<8)|ptr[1] );
+@@ -90,6 +96,6 @@
+ // 		r2 = sceGpioQueryIntr(4)
+-	spin = SYSCON_SPIN_MAX;
++	spin_ack = SYSCON_SPIN_MAX;	/* PSC A3: was spin */
+ 	while( (REG32(0xbe240020) & 0x10)==0)
+ 	{
+-		if(spin-- == 0){ REG32(0xbe580004)=4; REG32(0xbe24000c)=0x08; return -4; }
++		if(spin_ack-- == 0){ REG32(0xbe580004)=4; REG32(0xbe24000c)=0x08; result = -4; goto out; }	/* PSC A3, A4 */
+ //Kprintf("%02X ",REG32(0xbe240004)&0x18);
+@@ -196,2 +202,4 @@
+ 
++out:	/* PSC 2.1 A4: hand the captures to the recorder, then return as before */
++	PSC_XFER_OUT(dmy, spin, spin_ack, dlast, st9, sttx);
+ 	return result;

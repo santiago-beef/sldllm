@@ -1,0 +1,96 @@
+drwxr-xr-x   9 root     root            0 Jan  2  2008 .
+drwxr-xr-x   2 root     root            0 Feb 18  2008 bin
+-rwxr-xr-x   1 root     root       592372 Feb 18  2008 bin/busybox
+lrwxrwxrwx   1 root     root            7 Feb 18  2008 bin/echo -> busybox
+lrwxrwxrwx   1 root     root            7 Feb 18  2008 bin/ls -> busybox
+lrwxrwxrwx   1 root     root            7 Feb 18  2008 bin/msh -> busybox
+lrwxrwxrwx   1 root     root            7 Feb 18  2008 bin/false -> busybox
+lrwxrwxrwx   1 root     root            7 Feb 18  2008 bin/sh -> busybox
+lrwxrwxrwx   1 root     root            7 Feb 18  2008 bin/true -> busybox
+lrwxrwxrwx   1 root     root            7 Feb 18  2008 bin/cat -> busybox
+lrwxrwxrwx   1 root     root            7 Feb 18  2008 bin/chmod -> busybox
+lrwxrwxrwx   1 root     root            7 Feb 18  2008 bin/cp -> busybox
+lrwxrwxrwx   1 root     root            7 Feb 18  2008 bin/date -> busybox
+lrwxrwxrwx   1 root     root            7 Feb 18  2008 bin/df -> busybox
+lrwxrwxrwx   1 root     root            7 Feb 18  2008 bin/ln -> busybox
+lrwxrwxrwx   1 root     root            7 Feb 18  2008 bin/printenv -> busybox
+lrwxrwxrwx   1 root     root            7 Feb 18  2008 bin/pwd -> busybox
+lrwxrwxrwx   1 root     root            7 Feb 18  2008 bin/rm -> busybox
+lrwxrwxrwx   1 root     root            7 Feb 18  2008 bin/rmdir -> busybox
+lrwxrwxrwx   1 root     root            7 Feb 18  2008 bin/stty -> busybox
+lrwxrwxrwx   1 root     root            7 Feb 18  2008 bin/touch -> busybox
+lrwxrwxrwx   1 root     root            7 Feb 18  2008 bin/egrep -> busybox
+lrwxrwxrwx   1 root     root            7 Feb 18  2008 bin/fgrep -> busybox
+lrwxrwxrwx   1 root     root            7 Feb 18  2008 bin/grep -> busybox
+lrwxrwxrwx   1 root     root            7 Feb 18  2008 bin/kill -> busybox
+lrwxrwxrwx   1 root     root            7 Feb 18  2008 bin/more -> busybox
+lrwxrwxrwx   1 root     root            7 Feb 18  2008 bin/ps -> busybox
+lrwxrwxrwx   1 root     root            7 Feb 18  2008 bin/uname -> busybox
+lrwxrwxrwx   1 root     root            7 Feb 18  2008 bin/vi -> busybox
+lrwxrwxrwx   1 root     root            7 Feb 18  2008 bin/mkdir -> busybox
+lrwxrwxrwx   1 root     root            7 Feb 18  2008 bin/mknod -> busybox
+lrwxrwxrwx   1 root     root            7 Feb 18  2008 bin/mv -> busybox
+lrwxrwxrwx   1 root     root            7 Feb 18  2008 bin/mount -> busybox
+lrwxrwxrwx   1 root     root            7 Feb 18  2008 bin/umount -> busybox
+lrwxrwxrwx   1 root     root            7 Feb 18  2008 bin/dd -> busybox
+lrwxrwxrwx   1 root     root            7 Feb 18  2008 bin/tar -> busybox
+lrwxrwxrwx   1 root     root            7 Feb 18  2008 bin/sed -> busybox
+lrwxrwxrwx   1 root     root            7 Feb 18  2008 bin/dmesg -> busybox
+drwxr-xr-x   3 root     root            0 Feb  2  2008 usr
+drwxr-xr-x   2 root     root            0 Feb 18  2008 usr/bin
+lrwxrwxrwx   1 root     root           17 Feb 18  2008 usr/bin/[ -> ../../bin/busybox
+lrwxrwxrwx   1 root     root           17 Feb 18  2008 usr/bin/[[ -> ../../bin/busybox
+lrwxrwxrwx   1 root     root           17 Feb 18  2008 usr/bin/test -> ../../bin/busybox
+lrwxrwxrwx   1 root     root           17 Feb 18  2008 usr/bin/du -> ../../bin/busybox
+lrwxrwxrwx   1 root     root           17 Feb 18  2008 usr/bin/printf -> ../../bin/busybox
+lrwxrwxrwx   1 root     root           17 Feb 18  2008 usr/bin/sort -> ../../bin/busybox
+lrwxrwxrwx   1 root     root           17 Feb 18  2008 usr/bin/tty -> ../../bin/busybox
+lrwxrwxrwx   1 root     root           17 Feb 18  2008 usr/bin/who -> ../../bin/busybox
+lrwxrwxrwx   1 root     root           17 Feb 18  2008 usr/bin/whoami -> ../../bin/busybox
+lrwxrwxrwx   1 root     root           17 Feb 18  2008 usr/bin/clear -> ../../bin/busybox
+lrwxrwxrwx   1 root     root           17 Feb 18  2008 usr/bin/find -> ../../bin/busybox
+lrwxrwxrwx   1 root     root           17 Feb 18  2008 usr/bin/free -> ../../bin/busybox
+lrwxrwxrwx   1 root     root           17 Feb 18  2008 usr/bin/less -> ../../bin/busybox
+lrwxrwxrwx   1 root  2457 blocks
+   root           17 Feb 18  2008 usr/bin/top -> ../../bin/busybox
+lrwxrwxrwx   1 root     root           17 Feb 18  2008 usr/bin/which -> ../../bin/busybox
+lrwxrwxrwx   1 root     root           17 Feb 18  2008 usr/bin/rx -> ../../bin/busybox
+-rwxr--r--   1 root     root       530332 Feb  3  2008 usr/bin/psposk2
+-rwxr--r--   1 root     root       121228 Feb  3  2008 usr/bin/pspmd
+lrwxrwxrwx   1 root     root           12 Feb  3  2008 usr/screenshots -> /ms0/picture
+drwxr-xr-x   3 root     root            0 Jan 29  2008 dev
+crw-r--r--   1 root     root       5,   1 Sep 29  2007 dev/console
+crw-r--r--   1 root     root       1,   3 Sep 30  2007 dev/null
+crw-r--r--   1 root     root       4,   1 Oct 29  2007 dev/tty1
+crw-r--r--   1 root     root       1,   5 Oct 12  2007 dev/zero
+crw-r--r--   1 root     root      29,   0 Oct 18  2007 dev/fb0
+crw-r--r--   1 root     root       4,   2 Oct 29  2007 dev/tty2
+crw-r--r--   1 root     root      39, 200 Jan 11  2008 dev/joypad
+crw-r--r--   1 root     root       4,   3 Oct 29  2007 dev/tty3
+crw-r--r--   1 root     root       4,   4 Oct 29  2007 dev/tty4
+crw-r--r--   1 root     root       4,   5 Oct 29  2007 dev/tty5
+crw-r--r--   1 root     root       4,   6 Oct 29  2007 dev/tty6
+brw-r--r--   1 root     root      31, 200 Nov 12  2007 dev/ms0
+crw-r--r--   1 root     root       5,   0 Nov 29  2007 dev/tty
+crw-r--r--   1 root     root       4, 200 Jan  9  2008 dev/ttySRC2
+drwxr-xr-x   2 root     root            0 Jan 15  2008 dev/input
+crw-r--r--   1 root     root      13,  32 Jan 14  2008 dev/input/mouse0
+crw-r--r--   1 root     root      13,  63 Jan 15  2008 dev/input/mice
+crw-r--r--   1 root     root      10,   1 Jan 14  2008 dev/psaux
+lrwxrwxrwx   1 root     root            3 Feb  3  2008 dev/fb -> fb0
+lrwxrwxrwx   1 root     root            5 Feb  3  2008 dev/mouse -> psaux
+crw-r--r--   1 root     root       7,   0 Jan 29  2008 dev/vcs
+lrwxrwxrwx   1 root     root           11 Feb  3  2008 init -> bin/busybox
+drwxr-xr-x   2 root     root            0 Feb 18  2008 sbin
+lrwxrwxrwx   1 root     root           14 Feb 18  2008 sbin/init -> ../bin/busybox
+lrwxrwxrwx   1 root     root           14 Feb 18  2008 sbin/pivot_root -> ../bin/busybox
+lrwxrwxrwx   1 root     root           14 Feb 18  2008 sbin/switch_root -> ../bin/busybox
+lrwxrwxrwx   1 root     root           14 Feb 18  2008 sbin/halt -> ../bin/busybox
+lrwxrwxrwx   1 root     root           14 Feb 18  2008 sbin/poweroff -> ../bin/busybox
+lrwxrwxrwx   1 root     root           14 Feb 18  2008 sbin/reboot -> ../bin/busybox
+drwxr-xr-x   2 root     root            0 Oct 12  2007 proc
+drwxr-xr-x   2 root     root            0 Feb 18  2008 etc
+-rw-r--r--   1 root     root          314 Feb 18  2008 etc/inittab
+-rw-r--r--   1 root     root          287 Feb  2  2008 etc/profile
+-rwxr-xr-x   1 root     root          659 Feb  2  2008 etc/rc.sysinit
+drwxr-xr-x   2 root     root            0 Nov 12  2007 ms0

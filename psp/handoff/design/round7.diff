@@ -1,0 +1,350 @@
+--- /home/ubuntu/psp/handoff/design/DESIGN.r5.md	2026-10-05 23:28:44.793449422 +0000
++++ /home/ubuntu/psp/handoff/design/DESIGN.md	2026-10-05 23:39:46.341827835 +0000
+@@ -17,7 +17,9 @@
+ (8.2, 8.3); runs are told apart by a boot nonce that seeds every chunk CRC
+ (10.2). Record sizes are unchanged; the UHB, FILEHDR and stats words 153-159
+ change, so the **format version is 5**. The operator procedure is
+-[RUNBOOK.md](RUNBOOK.md), regenerated.
++[RUNBOOK.md](RUNBOOK.md), regenerated. **Round 7 (closure only):** the text
++needed to close A6-1 to A6-4 and red-team IF7b and TE10 changed, nothing else;
++each change is listed in section 16.
+ 
+ Inputs: the dossier, WORKFLOW, the four recon reports, the gate log and
+ reports, the candidates. Conventions: kernel paths are relative to
+@@ -67,8 +69,9 @@
+    as preallocation; ≈ 653 KB of kernel BSS; ≈ 0.8 µs per thread command
+    outside the window, 0 inside. **Worst-case loss at the pull: 4 s** when the
+    final check passes, else the `DUR` the panel shows. **(r5)** A stick slower
+-   than 30 KB/s fails the self-test (no run lost); from 25 KB/s up the model
+-   loses nothing under the sporadic error pattern (15.6).
++   than 30 KB/s fails the self-test (no run lost); from 28 KB/s up the model
++   loses nothing under the sporadic error pattern, and at 25 KB/s 1 run in 260
++   loses 15 s (15.6).
+ 
+ ---
+ ## 0. Traceability: every mechanism, what it is for, what it costs
+@@ -131,7 +134,7 @@
+ | U3 | Capped per-ring drain with the time multiplier `m` and catch-up (4.3); **(r4, A4 IF3)** `head_regress` resync with EVENT and REC red | D4, A1 F2, A4 IF3 | ≈ 65 LOC | KEEP |
+ | U4 | Durable point (`durable_tick`, `durable_next[5]`) reported through `ctl` (4.3, 4.5) | D6 | one 32-byte write per flush | KEEP |
+ | U5 | **(r4)** Failed flush: never overwritten (`seg_end` passes it). **(r5, A5 IF4 G2)** its records are queued by `seq` range and re-sent after the next DURABLE flush; a success is durable for its own records (4.6) | A1 IF1, A2 IF4, A3 IF1/IF4/IF5, A4 IF7, A5 IF4 | ≈ 60 LOC (range queue ≤ 32 entries) | CHANGED (r4 discarded the first success after a failure and re-sent everything since) |
+-| U6 | 2 MB segments grown in confirmed steps: flushes use any file's confirmed prefix; failed steps retried in place unless a FAT1 write failed; two kept ahead; cap on counted bytes; `fstat` and read-back (after a one-page `fadvise`) at completion. **(r5)** step verdicts from S records with FIBMAP extents (4.4 step 4, 4.8); the alias test after every `open` and the alias `fsync` (A5-1, 4.4 step 1); step 0 strict; 64 KB steps only while room < 81,920 or holding (A5-3); one next-attempt rule (fast if any write in the window succeeded, ≤ min(400, budget/2) per run, else ≥ 10 s); names budget from the free directory slots (4.4) | A3 IF5, IF1, IF4; A4 IF4, TE6, IF8, F1(b), F4; A5-1, A5-3, A5 IF7/IF8 | creation writes each segment once more (≈ 8.8 KB/s average, 5.2); ≈ 220 LOC | CHANGED (r4: verdicts from `fsync`, allocating/non-allocating proxy, no alias test, 64 KB steps for the whole first file) |
++| U6 | 2 MB segments grown in confirmed steps: flushes use any file's confirmed prefix; failed steps retried in place unless a FAT1 write failed; two kept ahead; cap on counted bytes; `fstat` and read-back (after a one-page `fadvise`) at completion. **(r5)** step verdicts from S records with FIBMAP extents (4.4 step 4, 4.8); the alias test after every `open` and the alias `fsync` (A5-1, 4.4 step 1); step 0 strict; 64 KB steps only while room < 81,920 or holding (A5-3); one next-attempt rule (fast if any write in the window succeeded, ≤ min(400, budget/2) per run, else ≥ 10 s); names budget from the free directory slots (4.4); after vfat read-only, no creation step: flushes go into the files already prepared, then the worker holds (2.12, 4.6) | A3 IF5, IF1, IF4; A4 IF4, TE6, IF8, F1(b), F4; A5-1, A5-3, A5 IF7/IF8 | creation writes each segment once more (≈ 8.8 KB/s average, 5.2); ≈ 220 LOC | CHANGED (r4: verdicts from `fsync`, allocating/non-allocating proxy, no alias test, 64 KB steps for the whole first file) |
+ | U7 | r2 segment rules: 9,999 names, monotonic `seg_cur`, rotation after three failures at most once per 5 s, FILEHDR as its own flush, `SEG FULL` | A2 IF4, A2 F-C, F-D | ≈ 80 LOC | **CUT/replaced** (brief candidate). With preallocation a rotation is a switch to a ready file (no metadata write). **(r5 figures, A5-4)** Names per run: `min(999, free directory slots − 16)`, ≥ 400 by the self-test (a fresh `PSCLOG` has 494 at 16 KB clusters, 1,006 at 32 KB); at most half of them as fast attempts (≤ 400), the rest ≥ 10 s apart: ≥ 200 × 10 s ≈ 33 minutes of whole-stick refusal before the names run out, longer than the run could record through anyway; a whole-stick outage costs one name per 10 s (4.4 step 1). FILEHDR is written by the creation itself at offset 0 (F-C's bound holds: no flush contains a FILEHDR) |
+ | U8 | Volume cap and "summary mode" | 3.3 (r2) | ≈ 20 LOC | **CUT.** Replaced by the cap on confirmed bytes (64 MB, ≈ 2.3 h at the section 5 rate, 4.4 step 8; **(r5, A5-4)** the "32-segment cap" wording was r3's) |
+ | U9 | HUD: 10 text lines of ≤ 35 characters in rows 0-175; 272 row writes per tick (rows 0-175, then rows 0-95 again) (8.2); **(r4, A4-4)** line 6 `MS PREP`; **(r5)** `MS PREP` with the measured speed, `MS SLOW`, `MS DIR FULL`, `META` (not red) | D13, N-1, N-2, N-3; load parity with telem (7.4); A4-4; A5-3 | 1.9 KB row buffer; ≈ 110 LOC | KEEP, **reduced** from the full-screen layout (brief candidate). The same 272 `lseek`+`write` calls as telem keep the load equal; rows 176-271 are never written (K30) |
+@@ -146,10 +149,10 @@
+ | U18 | `pscol` memory guards and stack high-water, exit on violation | A2 OE4 | ≈ 40 LOC | KEEP |
+ | U19 | Self-test, eight checks (CTX merged into WDOG) (8.2); **(r4, A4-5)** second `PSC TEST` when six checks are first green, independent of BTN; **(r5)** STICK also needs the geometry self-check, ≥ 30 KB/s measured and the names budget (8.2) | D13; A4-5; A5-3, A5 IF4 G2 | ≈ 95 LOC | KEEP |
+ | U20 | **(r4)** META detection from S records (K36), `ctl` op 4. **(r5)** informational: HUD line 6 `META` (not red), panel line 6 field, no panel paint; cleared on a later good write or when bypassed (4.7) | IF7, IF8 shown; A5-2 (no good run discarded) | ≈ 45 LOC | CHANGED |
+-| U21 | **(r5)** Verdicts from the S records: sector classes from K37, `FIBMAP` extent table per file, flush DURABLE iff every data sector has an error-free S record, step CONFIRMED iff FAT1 and data (and step-0 directory) writes succeeded; S windows read with `pread` (4.8) | A4 F1(b), F4; A5 IF7, IF8 diagnosable (not merely detected); A5-1 | ≈ 2 `pread`s of ≤ 40 records per tick, ≤ 3 `ioctl`s per step; extent tables ≈ 6 KB; ≈ 120 LOC | NEW |
++| U21 | **(r5)** Verdicts from the S records: sector classes from K37, `FIBMAP` extent table per file, flush DURABLE iff every data sector has an error-free S record, step CONFIRMED iff FAT1 and data (and, at step 0, its own directory-entry) writes succeeded; S windows read with `pread` (4.8) | A4 F1(b), F4; A5 IF7, IF8 diagnosable (not merely detected); A5-1 | ≈ 2 `pread`s of ≤ 40 records per tick, ≤ 3 `ioctl`s per step; extent tables ≈ 6 KB; ≈ 120 LOC | NEW |
+ | U22 | **(r5)** Bad-region escape: three consecutive FAILED flushes with a data-sector error while other writes succeed retire the active file and switch (4.6) | A5 IF9 (BLIND) | ≈ 25 LOC | NEW |
+ | U23 | **(r5)** Throughput gate in STICK (≥ 30 KB/s over the first two 64 KB steps) (4.8, 8.2) | A5 IF4 G2 (lossless range), A5-3 (self-test time) | ≈ 10 LOC | NEW |
+-| U24 | **(r5)** Console log level 4 at supervisor start (`syslog(8, NULL, 4)`) (7.1) | A5 OE8 (interrupts-off drawing of the driver's error lines) | one system call | NEW |
++| U24 | **(r5)** Console log level 4 at worker start (**r7, A6-2:** `syscall(__NR_syslog, 8, 0, 4)`, return in EVENT `conlevel`) (4.2, 7.1) | A5 OE8 (interrupts-off drawing of the driver's error lines) | one system call | NEW |
+ | U25 | **(r5)** Boot nonce: in FILEHDR and UHB, and the initial value of every non-FILEHDR chunk CRC (10.2) | A5 IF10 (other boots' chunks merged) | 2 words of format; ≈ 10 LOC | NEW |
+ 
+ ### 0.3 Decoder and runbook
+@@ -535,10 +538,11 @@
+   buffers, which live in the block device inode's page cache
+   (`grow_dev_page`, `fs/buffer.c:984`; that inode has `i_mode = S_IFBLK`,
+   `fs/block_dev.c:573`); file data pages belong to the file's own mapping.
+-- **(r5, 4.8) Partition start.** At the end of `psp_ms_init` (`ms_psp.c:196`,
+-  after the partition loop): `psc_ms_part_start = s_psp_ms_partitions[0].startSector`
++- **(r5, 4.8) Partition start.** At the end of `psp_ms_init` (after the
++  partition loop, which ends at `ms_psp.c:199`, before `s_initialized = TRUE`
++  at `:201`): `psc_ms_part_start = s_psp_ms_partitions[0].startSector`
+   (stats 153). The S record's `sector` is absolute: `psp_ms_transfer_bio` adds
+-  the partition start to `bi_sector` (`ms_psp.c:234`).
++  the partition start to `bi_sector` (`ms_psp.c:250`).
+ - `psp_led_ctrl`'s only callers (`ms_psp.c:119`, `:290,292,312,314` under the
+   semaphore, `psp.c:151` at early boot) make all L words single-writer; the
+   thread cannot run while that path holds a raised preempt count.
+@@ -596,7 +600,7 @@
+ 
+ | File | Semantics |
+ |---|---|
+-| `p`, `poll`, `w`, `s`, `m` | Binary record streams; file offset = `seq` × record size. `read()` follows the reader protocol of 3.5: it returns whole records only, at most as many bytes as requested, skips and counts bad slots, never blocks, takes no lock, and leaves `f_pos` at the next `seq` to read. A fresh open starts at offset 0 (the oldest valid record). `llseek` (custom: `SEEK_SET` to a multiple of the record size, and `SEEK_CUR` with 0 to read the position) lets a writer resume at `durable_next`; a seek to an earlier record counts `ring_rewinds`. Every `read()` of a ring file, even of zero bytes, sets `last_reader_tick` |
++| `p`, `poll`, `w`, `s`, `m` | Binary record streams; file offset = `seq` × record size. `read()` follows the reader protocol of 3.5: it returns whole records only, at most as many bytes as requested, skips and counts bad slots, never blocks, takes no lock, and sets **`*ppos`** (never `file->f_pos`) to the next `seq` to read: `read()` copies `*ppos` back to `f_pos` (`fs/read_write.c:364-366`), while a `pread` (4.8) passes a local position (`:404-405`) and so leaves the drain position alone. A fresh open starts at offset 0 (the oldest valid record). `llseek` (custom: `SEEK_SET` to a multiple of the record size, and `SEEK_CUR` with 0 to read the position) lets a writer resume at `durable_next`; a seek to an earlier record counts `ring_rewinds`. Every `read()` of a ring file, even of zero bytes, sets `last_reader_tick` |
+ | `stats` | The 768-byte block of 1.7, evaluated at each read at offset 0. Does not set `last_reader_tick` |
+ | `ctl` | Write-only, root only, whole 32-byte commands `'<I7I'`. Op 1 **durable**: `durable_tick`, `durable_next[5]`. Op 2 **class**: slot 0..7, pid, class (2.11). Op 3 **panel test**: argument = seconds (1..10); `panel_test_seq++`, `panel_test_secs = arg` (2.10). **(r4)** Op 4 **meta**: `meta_sector` (0 clears), `meta_tick` (4.7; **(r5)** shown in the panel's line 6 field, no paint). Anything else `-EINVAL`. `ctl_writes++` per command. One writer at a time (the active collector); each field is one aligned word read by the interrupt with one load |
+ 
+@@ -881,7 +885,6 @@
+   16384`), one 128 KB block each; G2 C8 records the figure (≤ 128 KB).
+ - **Supervisor** (`pscol`, no arguments): `setsid()`; `/dev/null` on fds 0-2;
+   ignores SIGINT, SIGQUIT, SIGHUP, SIGTSTP, SIGTTIN, SIGTTOU, SIGPIPE;
+-  **(r5, OE8)** `syslog(8, NULL, 4)`: console log level 4 (7.1);
+   `mkdir /ms0/PSCLOG` only if it is missing (RUNBOOK A4 creates it on the Mac,
+   so normally nothing is allocated at boot); run number `rrr` = 1 + the largest
+   `rrr` among names `T<rrr><nnn>.BIN` (1 if none, ≤ 999); **(r5, IF10)** boot
+@@ -900,7 +903,12 @@
+   The new worker creates a fresh segment (4.4) and never writes a file the old
+   one had open.
+ - **Worker** (`pscol -w rrr nonce`, or the supervisor after a takeover, same
+-  `rrr` and nonce): opens the ring files, seeks each to `durable_next` (0 at
++  `rrr` and nonce): **(r5, OE8; r7, A6-2)** sets console log level 4 (7.1) with
++  the kernel's `syslog` call, `syscall(__NR_syslog, 8, 0, 4)` as `telem.c:281`
++  makes it for type 3 (equivalently `klogctl(8, NULL, 4)`,
++  `staging_dir/usr/include/sys/klog.h:30`; not the C library's `syslog()`),
++  and writes its return and `errno` in EVENT `conlevel <ret> <errno>` (0 on
++  success, `kernel/printk.c:292-300`); opens the ring files, seeks each to `durable_next` (0 at
+   the first start, which keeps the boot WB record), counts the names budget
+   (4.4 step 6), registers pid classes (`ctl` op 2: itself 1, the
+   supervisor 2 unless after a takeover, `psposk2` 3, `pspmd` 4, every
+@@ -972,7 +980,7 @@
+ **Bounds.** Records per unit of `cap`: 48 × 80 + 24 × 40 + 2 × 288 + 64 × 40 +
+ 8 × 80 = 8,576 bytes; with `m ≤ 4` a RECS chunk is ≤ 34,304 + 40 (block
+ headers) + 20 = **34,364 bytes** (< 65,536). With STATS 788, PROCS ≤ 2,420,
+-UHB 100 and the PAD header: 37,692 → 37,888, within the **40,960-byte flush
++UHB 104 and the PAD header: 37,696 → 37,888, within the **40,960-byte flush
+ buffer**; KMSG (≤ 4,116) and EVENT (≤ 1,044) are added only if the flush stays
+ ≤ 40,960, else deferred (EVENT queue 8 KB; on overflow one
+ `events dropped <n>`). Nominal flush 1.5-3.5 KB (5.1).
+@@ -1076,9 +1084,33 @@
+    `fs/fat/file.c:310`, `fs/fat/inode.c:82-85`), every data sector the step
+    wrote has an error-free S record (sectors from `FIBMAP` of the new clusters,
+    done only after the FAT check), and `fstat` gives `conf + k`; **step 0 also
+-   needs its directory write** (the new entry) to succeed. Then `conf += k`.
+-   FSINFO, FAT-mirror and (after step 0) directory failures do not stop growth:
+-   the chain on the stick is whole without them; they are META evidence (4.7).
++   needs its own directory-entry write** to succeed. **(r7, A6-1) The own-entry
++   write is the first DIR-class write record (b0 set) carrying the worker's pid
++   after the last DATA record of the step's own data sectors in the window**;
++   it must exist and have b1 clear. The order is this tree's: `do_fsync` writes
++   the data first (`filemap_fdatawrite`, `fs/sync.c:90`, completed inside the
++   driver, `ms_psp.c:228-236`), then calls vfat's `file_fsync` (`fs/sync.c:97`;
++   `fs/fat/file.c:136`), whose `write_inode_now` (`fs/sync.c:62`;
++   `WB_SYNC_ALL`, `fs/fs-writeback.c:568-576`) runs `__sync_single_inode`:
++   data pages (`:170`, already clean), then `fat_write_inode(inode, 1)`
++   (`:173-174`), which writes the entry's sector at once with
++   `sync_dirty_buffer` (`fs/fat/inode.c:571`, `:604-606`); only then do
++   `write_super` (`fs/sync.c:67-68`; it only marks FSINFO dirty,
++   `fs/fat/inode.c:453-459`, `fs/fat/misc.c:40-72`) and `sync_blockdev`
++   (`fs/sync.c:72`, `fs/buffer.c:152-159`) write FSINFO, FAT1, the mirrors and
++   every other dirty directory sector. A DIR write record of another pid
++   (`pdflush`, 2.7) between that last DATA record and the worker's first DIR
++   record makes step 0 not CONFIRMED (`pdflush` may have written the entry's
++   buffer between `mark_buffer_dirty` and `sync_dirty_buffer`,
++   `fs/fat/inode.c:604-606`, the worker being preemptible there,
++   `CONFIG_PREEMPT_BKL=y`, `.config:136`, and `sync_dirty_buffer` then writes
++   nothing, `fs/buffer.c:2708-2709`); anywhere else in the window a `pdflush`
++   DIR record is ignored. **Any other failed DIR write in the window** (for
++   example a refusing sector holding rejected aliases' entries, IF7b, 15.3)
++   **is META evidence only** (4.7) and never abandons the file. Then
++   `conf += k`. FSINFO, FAT-mirror and directory failures other than step 0's
++   own entry do not stop growth, at step 0 as at later steps: the chain on the
++   stick is whole without them; they are META evidence (4.7).
+    - **A FAT1 write of the step failed:** the file **stops growing** (EVENT
+      `stop <name> <conf> <errno> <step>`, UHB b24): its in-memory chain may end
+      in a link the stick does not hold.
+@@ -1087,7 +1119,8 @@
+      (`mmu_private` advances per block, `fs/fat/inode.c:93`) and its clusters
+      are linked on the stick (FAT1 was written), so the retry allocates nothing
+      (`:68-72`). A fourth failure stops growth.
+-   - **Step 0 is never retried in place:** any failure abandons the file, since
++   - **Step 0 is never retried in place:** if it is not CONFIRMED the file is
++     abandoned, since
+      its entry may be lost and a rewrite would put a start and size into a slot
+      with no name (`fat_write_inode` writes size, attributes, start and times,
+      not the name, `fs/fat/inode.c:586-600`).
+@@ -1137,10 +1170,16 @@
+ **active** file and only while `seg_end + 40,960 ≤` its usable limit, so every
+ flush lies below `conf`. When the next one would not fit, or **(r5, IF9)** the
+ active file has been retired (4.6), the worker **switches** to the oldest file
+-that is complete, or prefix-usable with room (`1,536 + 40,960 ≤` usable limit),
+-or still in creation with that much room: `seg_end = 1,536`, the old file is
+-closed (EVENT `switch <old> <new> full|bad`, UHB b19); a file still being created
+-may become active and keeps growing (UHB b25). With no such file it **holds**:
++that has never been active and is complete, or prefix-usable with room
++(`1,536 + 40,960 ≤` usable limit), or still in creation with that much room:
++`seg_end = 1,536`, the old file is closed (EVENT `switch <old> <new> full|bad`,
++UHB b19); a file still being created may become active and keeps growing (UHB
++b25). **(r7, TE10)** A file that has been active is never a switch target
++again, and `seg_end = 1,536` is set only for a file that was never active.
++When the active file is itself still in creation (and not retired) and the
++next flush does not fit, the worker does not switch: it holds as below, with
++64 KB steps, and resumes flushing **in the same file at its own `seg_end`**
++once `seg_end + 40,960 ≤ conf`. With no switch target it **holds**:
+ rings are read with zero bytes (alive, not a stall), so they buffer (≥ 114 s),
+ `MS WAIT SPARE` and UHB b0 show, the panel appears after 3 s, and creation runs
+ at 64 KB per tick. At start-up the first file takes flushes **one 64 KB step
+@@ -1355,7 +1394,7 @@
+ 
+ **Sector classes.** The kernel publishes the partition start and the FAT
+ geometry once (stats 153-159, 2.4, 2.12). An S record's `sector` is absolute
+-(`ms_psp.c:234`); `rel = sector − ms_part_start`, in 512-byte units, compared
++(`ms_psp.c:250`); `rel = sector − ms_part_start`, in 512-byte units, compared
+ with the geometry scaled by `2^(s_blocksize_bits − 9)`. A record with `flags`
+ b7 (block-device page cache, 2.4) is **FAT1** if `rel ∈ [fat_start, fat_start +
+ fat_length)`, **FATM** (a mirror) below `fat_start + fats × fat_length`,
+@@ -1402,12 +1441,14 @@
+ otherwise **FAILED**. `fsync`'s return is recorded (UHB `last_errno`, b30) and
+ used for nothing else.
+ 
+-**Step verdict.** 4.4 step 4.
++**Step verdict.** 4.4 step 4 (**r7**: including how step 0's own
++directory-entry record is found in the window).
+ 
+ **Speed (A5-3, A5 IF4 G2).** The first two CONFIRMED 64 KB steps of the run give
+ the measured speed (bytes / time of `write` + `fsync`), shown on line 6 while
+ `MS PREP` and in EVENT `speed <KB/s>`. STICK needs ≥ 30 KB/s (8.2): the model of
+-15.6 is lossless under the sporadic error pattern from 25 KB/s up.
++15.6 is lossless under the sporadic error pattern from 28 KB/s up (at
++25 KB/s 1 whole-tick run in 260 loses 15.2 s).
+ 
+ **Geometry self-check.** STICK also needs the first file's step-0 data sectors,
+ computed from FIBMAP and the geometry, to equal the DATA write records of its
+@@ -1618,7 +1659,7 @@
+ | Scheduler hooks (2.11) | One compare per wake-up, one load and **(r4)** one compare per switch; ≈ 25 per thread wake-up, ≈ 15 per switch while it waits or is preempted | Outside `Syscon_cmd`; the thread's 0x33 command starts ≈ 0.2 µs later after a wake-up; a preempted command resumes ≈ 0.1 µs later |
+ | Out-of-bounds checksum (A2 note) | The thread's and `Syscon_cmd`'s frames change, so the bytes the baseline checksum reads above `rx_buf` when `rx[1] ≥ 16` differ from the baseline's | Which corrupt long frame passes by chance (≈ 1/256) changes; the rate does not, and every acceptance is visible as `ret > 0` with `rx[1] ≥ 16` |
+ | Userland privilege (A2 OE4) | User processes keep kernel privilege (`arch/mips/kernel/process.c:81-83`; `USER_DS` = `KERNEL_DS`, `include/asm-mips/uaccess.h:58`, `:107-113`), so a `pscol` bug could store into kernel memory or MMIO | Mitigated (4.2 guards, 3.1 kernel guards, G2 review of `pscol` with C3/C4 rigour, Stage 3 ASan/UBSan fuzzing, decoder `instrumentation-suspect`); a stray store that hits no guard is not detectable (R16) |
+-| `printk` | One line at init. **(r5, A5 OE8)** The Memory Stick driver's `DBG` messages are compiled in (`ms_psp.c:17-24`; the attempt-4 statement that they were compiled out was wrong): two unthrottled lines per failed transfer (`:272-274`, `:370-371`), which `printk` draws through fbcon with interrupts off (`kernel/printk.c:819-828`). The supervisor sets the console log level to 4 (`syslog(8, NULL, 4)`, `kernel/printk.c:292-300`): those lines carry the default level 4 (`:40`) and stay in the log and the KMSG chunks but are no longer drawn; `KERN_ERR` lines (FAT panic, `fs/fat/misc.c:22-32`; "Buffer I/O error", `fs/buffer.c:107`) still are | None on the syscon path. A healthy run is expected to print nothing after boot (any message is in KMSG, so a suppressed one is visible to the analyst); in error runs it removes interrupts-off drawing the instrumentation's own I/O would cause. What remains (the driver's 10 tries with `mdelay(1)` per failing sector, preemption off) is recorded as long S records and `wk_*`/`pre_*` holders |
++| `printk` | One line at init. **(r5, A5 OE8)** The Memory Stick driver's `DBG` messages are compiled in (`ms_psp.c:17-24`; the attempt-4 statement that they were compiled out was wrong): two unthrottled lines per failed transfer (`:272-274`, `:370-371`), which `printk` draws through fbcon with interrupts off (`kernel/printk.c:819-828`). The worker sets the console log level to 4 at its start (**r7, A6-2:** `syscall(__NR_syslog, 8, 0, 4)`, the kernel call, not libc `syslog()`; return in EVENT `conlevel`, 4.2; `kernel/printk.c:292-300`): those lines carry the default level 4 (`:40`) and stay in the log and the KMSG chunks but are no longer drawn; `KERN_ERR` lines (FAT panic, `fs/fat/misc.c:22-32`; "Buffer I/O error", `fs/buffer.c:107`) still are | None on the syscon path. A healthy run is expected to print nothing after boot (any message is in KMSG, so a suppressed one is visible to the analyst); in error runs it removes interrupts-off drawing the instrumentation's own I/O would cause. What remains (the driver's 10 tries with `mdelay(1)` per failing sector, preemption off) is recorded as long S records and `wk_*`/`pre_*` holders |
+ | Code layout | `Syscon_cmd`'s frame grows; kernel text ≈ +7 KB | The drain and ACK loops' cache alignment may change the wall-clock length of the spin budget; `ack_polls` with duration measures it |
+ | Memory | ≈ 653 KB less RAM for userland (3.1 % of `MemFree`); the collector's two processes use less than telem's one | None |
+ | Userland load, Memory Stick activity | 7.4, 7.5 | 7.4, 7.5 |
+@@ -1840,15 +1881,15 @@
+ 
+ | Test | Pass condition |
+ |---|---|
+-| **VFAT-FI (r3, A3 IF5 fix 4): this tree's own `fs/fat` with a fault-injecting block device.** A MIPS Malta kernel (`arch/mips/mips-boards/malta` is in this tree) built from a copy of this tree with the staging toolchain and `CONFIG_VFAT_FS`, plus a test-only RAM block driver `psc_faultblk` that completes bios synchronously like `ms_psp.c:228-276` and fails, by a schedule set through `/proc`, writes to chosen sector classes (FAT, directory, FSINFO, data) in chosen windows; run under `qemu-system-mipsel -M malta` (feasibility UNVERIFIED, R18). `pscol`'s segment and flush code, built as a static ELF, writes 30 simulated minutes of records from a simulated `/proc/psc`. Schedules: an outage covering a creation step that allocates (FAT write fails); an outage covering one steady flush; a 30 s burst; ≈ 100 single-tick outages; an outage across a switch; a failing read-back; **(r4, A4 F6) persistent refusal for the rest of the run of the FSINFO sector, of the `PSCLOG` directory sector, and of the FAT sector at the allocator**; **(r5, A5-1)** every write fails for exactly the tick of a creation's step-0 `fsync`, then the stick recovers; a 30 s whole-stick burst starting during an 8 KB creation; a 10-minute whole-stick burst during a hold; **(r5, A5 IF9)** a 2 MB data range of a ready file refusing writes after its creation, and the same range spanning the active file and the next; **(r5)** a data range ahead of the allocator; each with the block driver paced at 25, 30, 52, 100 and 300 KB/s, and with the driver's `DBG` printks kept (OE8) | after each schedule, the image mounted read-only on the host (loop mount or mtools) and decoded: **every record with `seq < durable_next` at the end is present** (in the copied files, or with `--raw` where the decoder asks for it); the guest log has **no "Filesystem panic"**; abandoned files hold no records; **no alias is ever written** (the worker's `inode reused` EVENTs against the fault driver's write log: no data sector of an alias's clusters written after the alias's `open`); the next fresh file after a step-0 failure is created in the first tick after the stick recovers; the raw-image scan recovers the same set; no hold exceeds 114.7 s; names used ≤ 1 + (outage seconds / 10) per outage. **Persistent schedules (r5, full scope):** META detected within 30 s of onset (EVENT, UHB b23, `meta_sector`, line 6), **`durable_tick` keeps advancing (no panel after the first 3 s), no record lost, no hold over 114.7 s**, creation continues (IF8: a file confirmed within 60 s; IF7b: aliases rejected, ≤ 160 names), and **no record already written is destroyed** (no sector of a region handed to `write()` written twice). **IF9:** `region bad` after 3 FAILED flushes, no record lost, no hold over 114.7 s |
++| **VFAT-FI (r3, A3 IF5 fix 4): this tree's own `fs/fat` with a fault-injecting block device.** A MIPS Malta kernel (`arch/mips/mips-boards/malta` is in this tree) built from a copy of this tree with the staging toolchain and `CONFIG_VFAT_FS`, plus a test-only RAM block driver `psc_faultblk` that completes bios synchronously like `ms_psp.c:228-276` and fails, by a schedule set through `/proc`, writes to chosen sector classes (FAT, directory, FSINFO, data) in chosen windows; run under `qemu-system-mipsel -M malta` (feasibility UNVERIFIED, R18). `pscol`'s segment and flush code, built as a static ELF, writes 30 simulated minutes of records from a simulated `/proc/psc`. Schedules: an outage covering a creation step that allocates (FAT write fails); an outage covering one steady flush; a 30 s burst; ≈ 100 single-tick outages; an outage across a switch; a failing read-back; **(r4, A4 F6) persistent refusal for the rest of the run of the FSINFO sector, of the `PSCLOG` directory sector, and of the FAT sector at the allocator**; **(r5, A5-1)** every write fails for exactly the tick of a creation's step-0 `fsync`, then the stick recovers; a 30 s whole-stick burst starting during an 8 KB creation; a 10-minute whole-stick burst during a hold; **(r5, A5 IF9)** a 2 MB data range of a ready file refusing writes after its creation, and the same range spanning the active file and the next; **(r5)** a data range ahead of the allocator; each with the block driver paced at 25, 30, 52, 100 and 300 KB/s, and with the driver's `DBG` printks kept (OE8) | after each schedule, the image mounted read-only on the host (loop mount or mtools) and decoded: **every record with `seq < durable_next` at the end is present** (in the copied files, or with `--raw` where the decoder asks for it); the guest log has **no "Filesystem panic"**; abandoned files hold no records; **no alias is ever written** (the worker's `inode reused` EVENTs against the fault driver's write log: no data sector of an alias's clusters written after the alias's `open`); the next fresh file after a step-0 failure is created within 10 s plus one tick of the stick's recovery (**r7, A6-3**: after a whole-stick failure the next attempt waits ≥ 10 s, 4.4 step 6); the raw-image scan recovers the same set; no hold exceeds 114.7 s; names used ≤ 1 + (outage seconds / 10) per outage. **Persistent schedules (r5, full scope):** META detected within 30 s of onset (EVENT, UHB b23, `meta_sector`, line 6), **`durable_tick` keeps advancing (no panel after the first 3 s), no record lost, no hold over 114.7 s**, creation continues (IF8: a file confirmed within 60 s; IF7b, **r7**: aliases rejected, a fresh file CONFIRMED within 20 ticks of the first creation attempt after onset with ≤ 153 names up to it, and every later creation ≤ 17 names), and **no record already written is destroyed** (no sector of a region handed to `write()` written twice). **IF9:** `region bad` after 3 FAILED flushes, no record lost, no hold over 114.7 s |
+ | Full-ring first flush (every ring full at the collector's start) | every RECS chunk ≤ 65,536 B, every flush ≤ 40,960 B; lag falls every tick; only first blocks report `lost > 0` |
+ | Takeover: worker killed; separately, worker frozen 35 s | the supervisor runs the worker loop as instance 2, creates a fresh segment at 64 KB per tick, seeks to `durable_next`, no `seq` gap except counted first-read losses; a takeover before the first durable flush keeps the WB record |
+-| **(r3, A3 IF6)** reader: a corrupt mid-ring `seq`; a forward jump of the P head; a backward jump | the reader skips and counts (`slot_bad` +1, resp. the skipped slots), `f_pos` advances, the next drain is complete; the collector writes an EVENT and turns REC red; a backward jump counts `head_regress` and resyncs |
+-| Errors, **(r4, A4 F6)** with the modelled stick speed 25, 30, 52, 100 and 300 KB/s (tick time + bytes / speed), against both the flush and the creation path, **(r5)** with failures injected as whole ticks and as single operations, and with S records supplied by the harness: single flush failure; 60 s of failures on every tick; ≈ 120 sporadic failures over 30 min; 130 s burst; creation failures (`open`, `write`, `fsync`, FAT1, FAT mirror, directory, FSINFO, data, read-back); a flush whose `fsync` fails while its data sectors succeed | no record lost except, for 130 s, those older than the ring span (counted); each FAILED flush has a `flush fail` EVENT, no region handed to `write()` is written again, its records are re-sent by range after the next DURABLE flush and a DURABLE flush is never re-sent; a flush with data written and `fsync` failed is DURABLE (b30); a step is stopped exactly when a FAT1 write failed and retried in place otherwise (≤ 3); no hold exceeds 114.7 s; flushes never extend a file |
++| **(r3, A3 IF6)** reader: a corrupt mid-ring `seq`; a forward jump of the P head; a backward jump | the reader skips and counts (`slot_bad` +1, resp. the skipped slots), `f_pos` advances, the next drain is complete; the collector writes an EVENT and turns REC red; a backward jump counts `head_regress` and resyncs; **(r7, A6-4)** `pread` windows interleaved with ordinary drains: each `pread` returns the records at its own offset, and the next `read()` continues from the previous drain's end with no record skipped or repeated |
++| Errors, **(r4, A4 F6)** with the modelled stick speed 25, 30, 52, 100 and 300 KB/s (tick time + bytes / speed), against both the flush and the creation path, **(r5)** with failures injected as whole ticks and as single operations, and with S records supplied by the harness: single flush failure; 60 s of failures on every tick; ≈ 120 sporadic failures over 30 min; 130 s burst; creation failures (`open`, `write`, `fsync`, FAT1, FAT mirror, directory, FSINFO, data, read-back); a flush whose `fsync` fails while its data sectors succeed; **(r7, TE10)** an active file still in creation during catch-up (40,960-byte flushes) with two failed steps, and separately with a 3 s burst | no record lost except, for 130 s, those older than the ring span (counted); each FAILED flush has a `flush fail` EVENT, no region handed to `write()` is written again, its records are re-sent by range after the next DURABLE flush and a DURABLE flush is never re-sent; a flush with data written and `fsync` failed is DURABLE (b30); a step is stopped exactly when a FAT1 write failed and retried in place otherwise (≤ 3); no hold exceeds 114.7 s; flushes never extend a file; **(r7, TE10)** the worker holds and resumes in the same file at its own `seg_end`, never sets `seg_end = 1,536` in a file that has been active, no region is written twice and the boot records are intact |
+ | Volume: 15 min at 17.86 polls/s, 32 KB and 64 KB clusters, creation minutes included (A4-1) | P, POLL, W within ± 2 % of 5.1; flush S ≤ 22.6/s outside and ≤ 27.0/s in creation ticks, creation S ≤ 11.5 per 8 KB and ≤ 27 per 64 KB step; total within ± 10 % of 7,598 B/s; PROCS within [800, 2,400] B; `led_calls` = 2 × simulated sector writes; S count ≤ sectors written and Σ `nsect` = sectors written |
+ | **(r4)** Decoder: a pull during a creation (that file holds no RECS); a stopped prefix file; META; a Nop's own failure with `t_busy` 0 | no `RAW IMAGE REQUIRED` in the first case, required in the others; the last classified WB (UL6) |
+ | **(r5, A5 IF10)** Decoder: files from an earlier boot of the same build (other nonce) in `PSCLOG` and in the image; a CRC-valid chunk of another boot inside a file's tail above `conf`; a `(ring, seq)` pair with two different contents; a straddle at Nop k with both results valid and onset at Nop k+1 (UL7) | nothing of another boot merged; the tail chunk listed as above the confirmed extent; the conflict reported with both copies; the k straddle listed with its step and the two-stage candidate printed |
+-| **(r5)** S-record verdicts: synthetic S windows (data sectors all good with `fsync` failed; one data sector failed; FAT1 failed, FAT mirror failed, directory failed at step 0 and at step 5; a skipped `seq`) and a wrong partition offset | DURABLE, FAILED, stopped, CONFIRMED, abandoned, CONFIRMED, FAILED as 4.8 and 4.4 step 4 define; the wrong offset fails the geometry self-check (STICK red) |
++| **(r5)** S-record verdicts: synthetic S windows (data sectors all good with `fsync` failed; one data sector failed; FAT1 failed, FAT mirror failed, directory failed at step 0 and at step 5; **(r7, A6-1)** step 0 with its own entry OK, then another directory sector failing later in the window; step 0 with its own entry failed, another directory sector OK; step 0 with no worker DIR record after its DATA records, or a `pdflush` DIR record before the worker's first; a skipped `seq`) and a wrong partition offset | DURABLE, FAILED, stopped, CONFIRMED, abandoned (own entry), CONFIRMED, CONFIRMED, abandoned, abandoned, FAILED as 4.8 and 4.4 step 4 define; the wrong offset fails the geometry self-check (STICK red) |
+ | Panel: paint routine on the host into a 512 × 272 buffer from stats snapshots | layout of 2.10 and 10.8, every field transcribable; `panel_cd` fires at ≡ 125 mod 250, never ≡ 0 mod 1250; the band is cleared once when the condition ends; title `PSC MS RO` when `ms_rdonly` or `fat_panics` is set |
+ | **(r3, N-2)** HUD render on the host, every state of every line | no glyph pixel at x ≥ 428 in rows 8-39 or in rows ≥ 168; every line ≤ 35 characters; every check name and POLL condition legible |
+ | **(r3, N-4)** stale-frame sequence whose healthy `rx[2]` is not 0x08 | classified H6 (template `rx[2]`), not H0; with the template removed, `rx2 literal` flagged |
+@@ -1916,8 +1957,8 @@
+ | 3 | STATS | the stats block (1.7) |
+ | 4 | KMSG | raw bytes from `/proc/kmsg` |
+ | 5 | PROCS | lines `<label> <pid> <contents of /proc/<pid>/stat>` with labels `JP`, `OSK`, `MD`, `WRK`; `JPSTATUS` lines (`State:`, `SigPnd:`, `ShdPnd:`); `MEM <MemFree line>` |
+-| 6 | UHB | **`'<21I'`** (**r5**, 84 bytes): `tickno`, `stats_now_tick`, `gtod_sec`, `gtod_usec`, `uptime_cs`, `memfree_kb`, `mouse_pkts_total`, `mouse_press_total` (`IN`), `bytes_synced_total`, `last_write_ms`, `last_fsync_ms`, `max_fsync_ms_60s`, `max_tick_ms_60s`, `write_errs` (FAILED flushes and creation steps, 4.8), `last_errno` (the last error of any `write` or `fsync`, also on a DURABLE flush), `flags`, `durable_tick`, `lag_max`, `seg` (**r5 layout, A5-4**: bits 0-9 active `nnn`, 10-19 `nnn` of the file being created, 20-28 its `conf` in units of 8,192 bytes (0-256), 29-30 complete files ahead (0-2), b31 a creation in progress), `drain_stuck`, **`nonce`**. `flags`: b0 holding; b1-b8 self-test KRN, WDOG, STICK, REC, PANEL, SUP, POLL, BTN; b9 supervisor alive; b10 no stick; b11 drain complete; b12 catch-up; b13 a complete file ahead; b14 writer is the supervisor after a takeover; b15 re-send pending (queued ranges); b16 memory-guard violation; b17 creation abandoned; b18 creation in progress; b19 segment switched; b20 `MS` line red; b21 read-only; b22 REC alarm; **(r4)** b23 META (4.7); b24 a file's growth stopped; b25 the active file is not complete (prefix); **(r5)** b26 waiting after an abandon (r4's `seg` b31); b27 a file retired (`region bad`); b28 an alias rejected; b29 speed gate passed; b30 a DURABLE flush whose `fsync` returned an error |
+-| 7 | EVENT | ASCII lines: worker start; takeover (`death`, `stall`, `guard`); write error; **(r4)** `flush fail`, `resend` (ring ranges), `stop`, `meta err` (**r5**: with class), `meta clear`, `readback cached`; **(r5)** `meta bypassed`, `flush meta err`, `inode reused <name> <ino>`, `region bad <name> <seg_end>`, `speed <KB/s>`, `names budget <n>`; catch-up start/end; head regress; drain stuck; segment create, ready, abandon (name, errno, offset, step), switch (`full`, `bad`); hold start/end; read-only; `guard ok stack_hw=<bytes>`; `guard <which> <tick>`; `events dropped <n>` |
++| 6 | UHB | **`'<21I'`** (**r5**, 84 bytes): `tickno`, `stats_now_tick`, `gtod_sec`, `gtod_usec`, `uptime_cs`, `memfree_kb`, `mouse_pkts_total`, `mouse_press_total` (`IN`), `bytes_synced_total`, `last_write_ms`, `last_fsync_ms`, `max_fsync_ms_60s`, `max_tick_ms_60s`, `write_errs` (FAILED flushes and creation steps, 4.8), `last_errno` (the last error of any `write` or `fsync`, also on a DURABLE flush), `flags`, `durable_tick`, `lag_max`, `seg` (**r5 layout, A5-4**: bits 0-9 active `nnn`, 10-19 `nnn` of the file being created, 20-28 its `conf` as v = ⌊conf / 8,192⌋ (0-256; **r7, A6-3:** the decoder takes conf = SEG for v = 256, else 8,192·v + 1,536, exact because a file in creation always has conf = 1,536 plus a multiple of 8,192 (4.4 steps 2-3: step 0 is 1,536 B, later steps 8 or 64 KB, only the last ends at SEG); v = 0 before step 0 is confirmed reads as 1,536, below which lies only the FILEHDR), 29-30 complete files ahead (0-2), b31 a creation in progress), `drain_stuck`, **`nonce`**. `flags`: b0 holding; b1-b8 self-test KRN, WDOG, STICK, REC, PANEL, SUP, POLL, BTN; b9 supervisor alive; b10 no stick; b11 drain complete; b12 catch-up; b13 a complete file ahead; b14 writer is the supervisor after a takeover; b15 re-send pending (queued ranges); b16 memory-guard violation; b17 creation abandoned; b18 creation in progress; b19 segment switched; b20 `MS` line red; b21 read-only; b22 REC alarm; **(r4)** b23 META (4.7); b24 a file's growth stopped; b25 the active file is not complete (prefix); **(r5)** b26 waiting after an abandon (r4's `seg` b31); b27 a file retired (`region bad`); b28 an alias rejected; b29 speed gate passed; b30 a DURABLE flush whose `fsync` returned an error |
++| 7 | EVENT | ASCII lines: worker start; takeover (`death`, `stall`, `guard`); write error; **(r4)** `flush fail`, `resend` (ring ranges), `stop`, `meta err` (**r5**: with class), `meta clear`, `readback cached`; **(r5)** `meta bypassed`, `flush meta err`, `inode reused <name> <ino>`, `region bad <name> <seg_end>`, `speed <KB/s>`, `names budget <n>`; **(r7)** `conlevel <ret> <errno>` (4.2); catch-up start/end; head regress; drain stuck; segment create, ready, abandon (name, errno, offset, step), switch (`full`, `bad`); hold start/end; read-only; `guard ok stack_hw=<bytes>`; `guard <which> <tick>`; `events dropped <n>` |
+ 
+ **Parsing.** Scan for `magic` at every 4-byte offset; accept a chunk if
+ `type` is known, `len ≤ 65,536`, the bytes exist and `crc` matches (plain for
+@@ -2131,7 +2172,7 @@
+ | R5 | EPC capture assumes `thread_info->regs` is set by the interrupt entry (`genex.S:166-167`, `:266-267`) and the timer is the only interrupt (`psp.c:637-654`) | H4, H10, N1 step | Bounds checks; WDOG checks `regs` valid; another IRQ would print "Unknown IRQ" into KMSG |
+ | R6 | Syscon timing sensitivity: G4L latched or level (resumption ≈ 1 µs later); G3-low gap ≈ 0.75 µs longer, original gap unknown | could lower a timing-dependent failure's rate | Gap measured per poll and reported (7.3); level-sensitive G4L judged unlikely (separate acknowledge write, `syscon.c:159`) |
+ | R7 | LED read-modify-writes ≈ 3.1× telem's on average, ≈ 7.9× in creation minutes, ≈ 46× in 64 KB steps (preallocation); cluster size and FAT copies UNVERIFIED | H10 exposure | Raises, does not mask; measured (`led_calls`, S records, read-back ORs); creation intervals flagged by the decoder (7.5) |
+-| R8 | Memory Stick throughput and `fsync` duration are UNKNOWN; the design needs ≈ 20.8 KB/s of physical writes on average; the collector's start time (≈ 20-40 s) is UNVERIFIED | loss bound, creation time, catch-up, self-test time | **(r5)** Measured at start and gated: STICK needs ≥ 30 KB/s (4.8, 8.2), else `MS SLOW` and an abort. The model of 15.6 loses nothing under the sporadic pattern (98 events per 30 min, whole-tick and per-operation) from 25 KB/s up and under whole-stick outages ≤ 100 s at ≥ 30 KB/s; the first complete drain comes ≤ 35 s after worker start at 30 KB/s. The kernel shows the durable age; UHB timings and the first UHB's `uptime_cs`; the runbook waits 90 s (+45 s); **(r5)** a bad data region costs 3 FAILED flushes before the switch (4.6; the r4 wording "one failed flush per tick that meets it" was wrong, A5 IF9) |
++| R8 | Memory Stick throughput and `fsync` duration are UNKNOWN; the design needs ≈ 20.8 KB/s of physical writes on average; the collector's start time (≈ 20-40 s) is UNVERIFIED | loss bound, creation time, catch-up, self-test time | **(r5)** Measured at start and gated: STICK needs ≥ 30 KB/s (4.8, 8.2), else `MS SLOW` and an abort. The model of 15.6 loses nothing under the sporadic pattern (98 events per 30 min, whole-tick and per-operation) from 28 KB/s up (**r7, A6-3:** at 25 KB/s 1 whole-tick run in 260 loses 15.2 s) and under whole-stick outages ≤ 100 s at ≥ 30 KB/s; the first complete drain comes ≤ 35 s after worker start at 30 KB/s. The kernel shows the durable age; UHB timings and the first UHB's `uptime_cs`; the runbook waits 90 s (+45 s); **(r5)** a bad data region costs 3 FAILED flushes before the switch (4.6; the r4 wording "one failed flush per tick that meets it" was wrong, A5 IF9) |
+ | R9 | P4 against P5a relies on the syscon's behaviour after a dropped G3 (recon §5.1) | H4 point | Several fields; if ambiguous, reported "P4 or P5a" |
+ | R10 | The EPC and register maps must match the build, and `i`/`ptr` must sit in registers 2..15, 24, 25 for a suspended thread | H4 step, P2 k, P6 j, LEDSPLIT | 10.1 address and `build_id` checks; G2 checks `regmap.txt`; the step itself does not depend on k/j |
+ | R11 | **(r3)** A FAT or directory sector write that fails (in a creation or a flush) and destroys the sector's old content, or a FAT write lost silently, could damage the on-disk chain or entry of the active segment (hardware behaviour UNVERIFIED). **(r5)** Also: a stopped file whose last link L → c reached the stick while c's own entry did not (A5 red team IF5 residual) has a directory size covering a free cluster, so its Mac copy can fail; a destroyed directory sector could free the slot of a file in use, whose alias the r5 test then rejects (4.4 step 1); the only remaining source of `fat_fs_panic` is silent loss | the Mac copy of that segment | The kernel keeps writing through the cluster cache (4.4); flushes never read the unconfirmed link and never truncate (4.4 step 5, `mm/filemap.c:2161-2162`); the stick is mounted read-only and a raw image is mandatory after any error (RUNBOOK E); the decoder's raw path needs no FAT (10.2); VFAT-FI tests the reported-error cases (8.5) |
+@@ -2148,7 +2189,7 @@
+ | R22 | **(r3, N-4)** That a reply's `rx[2]` names the command it answers rests on an author comment (`syscon.h:55-58`), UNVERIFIED | H6, N2b | Rules compare with the template's per-command `rx[2]`; the literal value only without a template, flagged `rx2 literal`; Stage 3 tests a healthy `rx[2]` other than 0x08 |
+ | R23 | **(r4, A4-2)** The read-back page is dropped by `fadvise64_64` through `syscall()` in the o32 seven-slot layout because uClibc's `posix_fadvise` marshals five (section 14); the call is never used by any other program on this system | whether the read-back reaches the stick | The worker checks the return (0) and that `ms_seg_rd` rose; a cached read-back is only an EVENT; G2 checks the call in objdump; VFAT-FI runs the same `mm/fadvise.c` |
+ | R24 | **(r4)** META can flag a metadata sector that refuses ≥ 5 writes and later recovers; the S b7 tag reads `page->mapping` of a page under I/O | the operator's notes | **(r5)** META is informational: the run counts, D8 decides on `DUR`; the flag clears on a later good write or when bypassed (4.7); a mis-tagged page would show as a META on a data sector (class reported), never as a lost record; Stage 3 VFAT-FI |
+-| R25 | **(r5)** The S-record verdicts rest on the published geometry, the partition offset (`ms_psp.c:234`), `FIBMAP` (`fs/ioctl.c:60-76`) and the S hook seeing every transfer | every durability verdict | The geometry self-check at STICK (4.8) compares FIBMAP + geometry with the first step's own S records, so an error is an abort, not a misjudged run; a window with a skipped `seq` is FAILED (conservative, costs a re-send); Stage 3 verdict vectors (8.5) and VFAT-FI |
++| R25 | **(r5)** The S-record verdicts rest on the published geometry, the partition offset (`ms_psp.c:250`), `FIBMAP` (`fs/ioctl.c:60-76`) and the S hook seeing every transfer | every durability verdict | The geometry self-check at STICK (4.8) compares FIBMAP + geometry with the first step's own S records, so an error is an abort, not a misjudged run; a window with a skipped `seq` is FAILED (conservative, costs a re-send); Stage 3 verdict vectors (8.5) and VFAT-FI |
+ | R26 | **(r5)** Aliases: the test depends on `fstat` showing the cached inode's size and number (`fs/fat/inode.c:276-295`, `:412`); a takeover instance has not seen its predecessor's numbers | A5-1 | Size-0 aliases have no chain and are safe to write (4.4 step 1); written aliases show `st_size ≠ 0`; ≤ 24 `open`s per tick and a names budget from the free slots bound the cost; a long outage costs one name per 10 s; Stage 3 schedules (8.5) |
+ | R27 | **(r5)** Console log level 4 hides level-4 messages from the screen for the whole run | photographs of kernel messages | Every message is still in the log and the KMSG chunks; `KERN_ERR` and more serious still draw (7.1) |
+ | R28 | **(r5)** The boot nonce is derived from tick and Count sums, so two boots could collide (probability ≈ 2^-32 per pair, UNVERIFIED distribution) | run separation in the decoder | The decoder also selects by FILEHDR `run` and checks timeline continuity; a collision would show as `(ring, seq)` conflicts, which are reported, never dropped (10.2) |
+@@ -2415,15 +2456,30 @@
+ - **IF7b, the `PSCLOG` directory sector X refuses from t0.** Flushes: DURABLE
+   as above (the directory write fails, `fs/fat/inode.c:604-605`, after the data).
+   The active and ready files keep growing (after step 0 a directory failure is
+-  tolerated). A new file whose entry falls in X: its step 0 fails on the
+-  directory write and it is abandoned; the next attempt (next tick: other
++  tolerated). A new file whose entry falls in X: its step 0 fails on its own
++  entry's write (the first DIR record after its data, 4.4 step 4) and it is
++  abandoned; the next attempt (next tick: other
+   writes succeeded, so the stick counts as working) meets the alias of that
+   inode at the same slot (the buffer was re-read, `fs/buffer.c:1378-1384`),
+   rejects and closes it, and in the same tick opens again: the alias's entry
+   occupies the slot in the buffer, so the next fresh slot follows. Each tick
+-  adds one slot of X; after at most 16 slots the next fresh slot is in X + 1,
+-  which works: ≤ 16 ticks, ≤ 152 names (Σ k for k ≤ 16, plus the abandons),
+-  while the active file and the files ahead (≈ 9 minutes) keep recording. Files
++  adds one slot of X (tick k: k − 1 aliases and one abandon, k names); after
++  at most 16 slots the next fresh slot is in X + 1. **(r7, A6-1)** Its step-0
++  window holds its own entry's write of X + 1 (OK, from `fat_write_inode`)
++  and then `sync_blockdev`'s write of X (failed: the rejected aliases dirtied
++  X's re-read buffer, `fs/fat/dir.c:87`, `:1266-1267`); by the own-entry rule
++  of 4.4 step 4 it is CONFIRMED, the X failure being META evidence. So
++  ≤ 17 ticks and ≤ 153 names (Σ k for k ≤ 16 = 136, then 16 aliases and the
++  fresh file; r6 said 152), while the active file and the files ahead
++  (≈ 9 minutes) keep recording. **Every later creation re-meets X's lost
++  slots** (X is re-read from the stick at each scan): ≤ 16 aliases and the
++  fresh file, ≤ 17 names in one tick. A 35-minute run creates 10 files (8
++  written and 2 ahead, 15.6), so ≤ 153 + 9 × 17 = 306 names against a budget
++  of ≥ 400 (4.4 step 6). This assumes the rejected inodes stay cached; one
++  evicted by memory reclaim makes its slot a fresh file again, abandoned at
++  step 0, ≤ 17 more names and one more tick for the creation that meets it
++  (how often reclaim evicts them is UNVERIFIED; the margin at the minimum
++  budget covers 5 such). Files
+   whose entries are in X have stale or missing entries on the stick; their
+   records are on data sectors whose FAT links were written, recovered by the
+   raw image (mandatory with META, RUNBOOK E2). **Nothing is lost.** (If X were
+@@ -2461,7 +2517,7 @@
+ 
+ | Note | Response | Where |
+ |---|---|---|
+-| **OE8** the driver's `DBG` lines are compiled in and drawn with interrupts off; attempt-4 S9 said otherwise | **Adopted.** Console log level 4 set once by the supervisor (`syslog(8, NULL, 4)`); the error-path printk is stated in 7.1 and VFAT-FI keeps the `DBG` path. **Correction to the record:** attempt-4 red team S9 and anything that relied on it ("the driver prints nothing") was wrong: `ms_psp.c:17-24` defines `DEBUG` and `DBG(args)` as `printk args` | 7.1, 4.2, 8.5, U24, R27 |
++| **OE8** the driver's `DBG` lines are compiled in and drawn with interrupts off; attempt-4 S9 said otherwise | **Adopted.** Console log level 4 set once at worker start (**r7, A6-2:** `syscall(__NR_syslog, 8, 0, 4)`, return in EVENT `conlevel`; r6 named libc `syslog()` and the supervisor); the error-path printk is stated in 7.1 and VFAT-FI keeps the `DBG` path. **Correction to the record:** attempt-4 red team S9 and anything that relied on it ("the driver prints nothing") was wrong: `ms_psp.c:17-24` defines `DEBUG` and `DBG(args)` as `printk args` | 7.1, 4.2, 8.5, U24, R27 |
+ | **UL7** a "benign" straddle at Nop k, death at Nop k+1 | **Adopted**: all WT within ± 2 cycles listed with step and both results; `H4 two-stage` candidate; Stage 3 vector | 10.7 step 5, 8.5, X4 |
+ | **IF5 residual** an implicit truncate after a failed `write()` could walk to a free entry in a stopped file | **Contested with source, and listed in R11.** `generic_file_buffered_write` truncates only when the failed write extends the file: `if (pos + bytes > isize) vmtruncate(inode, isize);` (`mm/filemap.c:2161-2162`). A flush ends at or below `conf` ≤ `i_size`, so it never truncates; and a flush's `fat_bmap` reads only the entries of clusters before the one it maps (`fs/fat/cache.c:241-251`), so it never reads the unconfirmed link either. The red team's chain therefore cannot start from a flush. Its other consequence, a Mac copy that fails because the directory size covers a free cluster, is in R11 and makes the raw image mandatory. The recommended "do not promote" rule is not needed for safety and would only shorten the margin; with F4's classification the worker could apply it, and Stage 2 may if the reviewer prefers | 4.4 step 5, 4.6, R11 |
+ | **TE7** 14.2's "the file being created holds none" is false when it is also active | **Adopted**: 14.2 and 10.2 corrected; RUNBOOK E1 step 5 says the image may then be requested | 14.2, 10.2; RUNBOOK E1 |
+@@ -2541,7 +2597,11 @@
+ 
+ **IF4 sporadic** (98 events per 30 min, worker at 40 s; 200 runs of 30 min
+ per point at 22-35 KB/s, 60 runs at 20 and 40-300 KB/s): r5 loses nothing at
+-25, 28, 30, 35, 40, 52, 100 and 300 KB/s under both failure models; at 22 KB/s, whole-tick failures lose 0.09-0.13 s on average (1-2 runs
++28, 30, 35, 40, 52, 100 and 300 KB/s under both failure models, nor at 25 KB/s
++in these 200 runs; **(r7, A6-3)** with the seeds 0-59 of `run_if4.py`, one
++whole-tick run at 25 KB/s (seed 9) loses 15.2 s (longest hold 22 s), so 1 run
++in 260 at 25 KB/s (re-run for round 7; none at 28 or 30 KB/s with seeds 0-59);
++at 22 KB/s, whole-tick failures lose 0.09-0.13 s on average (1-2 runs
+ of 200); at 20 KB/s (60 runs) 10.2 s on average in 14 of 60 runs. Per-operation
+ failures lose nothing from 20 KB/s up; the longest hold is 34 s. Hence the
+ 30 KB/s gate.
+@@ -2586,3 +2646,24 @@
+ feasibility UNVERIFIED) is the only place the failure paths can be exercised
+ before the run. If VFAT-FI cannot be built, the alias and verdict logic reach
+ the hardware tested only by the host vectors of 8.5.
++
++---
++
++## 16. Response to G1 attempt 6 (round 7)
++
++Closure only (gates/LOG.md, note of 2026-10-05): `gates/G1-attempt6-review.md`
++A6-1 to A6-4 and `gates/G1-attempt6-redteam.md` IF7b and TE10. No mechanism,
++record type, field, ring, HUD line, panel state, counter or runbook step was
++added; the one new EVENT string is the record A6-2 asks for. The order of
++writes A6-1 relies on was read in `/home/ubuntu/psp/build/linux` for this round.
++
++| Item | Response |
++|---|---|
++| **A6-1** (blocking, D6; = IF7b) | **FIXED at 4.4 step 4, 4.8, 8.5, 15.3, U21.** Step 0's own entry is the first DIR-class write record with the worker's pid after the last DATA record of the step's data sectors; it must exist and be error-free; other DIR failures are META evidence only; "any failure abandons" now reads "not CONFIRMED → abandoned". Order verified: data `fs/sync.c:90` (synchronous driver, `ms_psp.c:228-236`), then `file_fsync` `:97` (`fs/fat/file.c:136`) → `write_inode_now` `:62` (`fs/fs-writeback.c:568-576`) → `fat_write_inode(…, 1)` `fs/fs-writeback.c:173-174` → `sync_dirty_buffer` `fs/fat/inode.c:604-606`, before `write_super` `fs/sync.c:67-68` and `sync_blockdev` `:72`. One deliberate difference from the red team's text ("a `pdflush` DIR record is ignored"): a `pdflush` DIR record *between* the last DATA record and the worker's first DIR record makes step 0 not CONFIRMED, because `pdflush` can write the entry's buffer between `fs/fat/inode.c:604` and `:606` (`CONFIG_PREEMPT_BKL=y`, `.config:136`) and `sync_dirty_buffer` then writes nothing (`fs/buffer.c:2708-2709`); this can only cost a name. 8.5: three step-0 vectors added (own OK + other DIR failed → CONFIRMED; own failed + other OK → abandoned; own record missing or preceded by `pdflush` → abandoned). VFAT-FI IF7b: fresh file CONFIRMED within 20 ticks, timed from the first creation attempt after onset rather than META onset (META can show minutes before a creation is due, when the active file's entry is in X), ≤ 153 names up to it, ≤ 17 per later creation. 15.3: first phase ≤ 153 names (r6's 152 counted the abandons twice and left out the confirming tick), each later creation ≤ 17, ≤ 306 in a 35-minute run against ≥ 400; inode eviction by reclaim marked UNVERIFIED. 4.4 step 6 "IF7b ≤ 152" is left as it was: it bounds fast attempts, and IF7b needs at most 16 |
++| **A6-2** (advisory) | **FIXED at 4.2, 7.1, U24, 15.4, 10.2 (EVENT list).** `syscall(__NR_syslog, 8, 0, 4)` as `telem.c:281` (or `klogctl(8, NULL, 4)`, `staging_dir/usr/include/sys/klog.h:30`); return and `errno` in EVENT `conlevel <ret> <errno>`. The call moved from the supervisor to worker start, because the supervisor writes no EVENT (4.2: "writes neither the stick nor `ctl`"); the level is global, so an instance-2 repeat is harmless |
++| **A6-3** (advisory, a-g) | **FIXED.** (a) at 10.2 UHB `seg`: storage unchanged (⌊conf / 8,192⌋); the decoder takes SEG for 256, else 8,192·v + 1,536, which is exact for every conf a file in creation can have. (b) at 4.3: UHB 104, 37,696. (c) at 2.4, 4.8, R25: `ms_psp.c:250`; hook after the loop ending at `:199`. (d) at section 0 U6: the read-only worker rule. (e) at summary 7, 4.8, R8, 15.6: re-run gives 1 run in 260 at 25 KB/s losing 15.2 s (seed 9 of 0-59, whole tick), none at 28 or 30 KB/s; the gate stays 30 KB/s; 15.2's round-6 sentence stays as the record of that round, and 15.6 supersedes it. (f) at 8.5 VFAT-FI: within 10 s plus one tick of recovery. (g) at RUNBOOK B5: write down `rrr` |
++| **A6-4** (advisory) | **FIXED at 2.8 and 8.5 (reader row).** The ring `read()` sets `*ppos`, never `file->f_pos` (`fs/read_write.c:364-366`, `:404-405`); Stage 3 interleaves `pread` windows with ordinary drains |
++| **TE10** (red-team AMBIGUOUS) | **FIXED at 4.4 "Use and switch" and 8.5 Errors.** A file that has been active is never a switch target again; `seg_end = 1,536` only for a never-active file; an active file still in creation holds with 64 KB steps and resumes at its own `seg_end` once `seg_end + 40,960 ≤ conf`. Errors vector: catch-up with two failed steps, and with a 3 s burst; pass: no region written twice, boot records intact. The red team's optional fix 3 (tie the start-up step to the flush size) is not adopted: it is optional and would change a rule and the model |
++| **Budget** | `budget_r5.py` re-run: every figure unchanged; **no budget number changed**. Only stale text was corrected to the script's values (4.3). `sim_r5.py` re-run for (e) only |
++| **D20** | UHB `seg` re-checked: `'<21I'`, `seg` word 18 at byte 72, bits 20-28, writer and decoder now state the same mapping; no other field's description changed. The EVENT list (10.2) gains `conlevel` to match 4.2 |
++| **Lines** | DESIGN.md through section 12: **2,213 → 2,254 (+41)**; RUNBOOK.md 483 → 485 (+2) |
+--- /home/ubuntu/psp/handoff/design/RUNBOOK.r5.md	2026-10-05 23:28:44.794886509 +0000
++++ /home/ubuntu/psp/handoff/design/RUNBOOK.md	2026-10-05 23:36:57.441002208 +0000
+@@ -217,7 +217,9 @@
+ `BTN` stays red, release for 2 seconds and hold again; at most three holds.
+ 
+ **B5.** When line 1 shows **`SELFTEST PASS`** in green, **photograph the whole
+-screen with the stopwatch in frame (photo P2)**. Write down the time.
++screen with the stopwatch in frame (photo P2)**. Write down the time, and
++the three digits after `PSC T` on line 1 (the run number `rrr`; E1 step 5
++needs it).
+ 
+ **B6.** Tap **SELECT once**, briefly, touching nothing else. Line 5 should read
+ `MOUSE ON`. If it reads `MOUSE OFF`, tap SELECT once more. Then go straight to

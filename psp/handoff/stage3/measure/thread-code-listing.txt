@@ -1,0 +1,33 @@
+# thread code between the two syscon calls (static count), objdump -d of each vmlinux
+## base out/20260927T204657Z psp_joypad_thread
+88114ad8:	8fbf0044 	lw	ra,68(sp)
+88114adc:	24040001 	li	a0,1
+88114ae0:	24050033 	li	a1,51
+88114ae4:	0e033c5e 	jal	880cf178 <pspSyscon_tx_dword>
+88114ae8:	24060003 	li	a2,3
+88114aec:	27a40014 	addiu	a0,sp,20
+88114af0:	27a50010 	addiu	a1,sp,16
+88114af4:	0e033ce6 	jal	880cf398 <_pspSysconGetCtrl2>
+## new (release) out/20261006T052947Z psp_joypad_thread (loop top and between the calls)
+88118270:	14400228 	bnez	v0,88118b14 <psp_joypad_thread+0x934>
+88118274:	8fbf003c 	lw	ra,60(sp)
+88118278:	0e034eaa 	jal	880d3aa8 <psc_poll_begin>
+8811827c:	00000000 	nop
+88118280:	9242f8ce 	lbu	v0,-1842(s2)
+88118284:	24030002 	li	v1,2
+88118288:	2c420002 	sltiu	v0,v0,2
+8811828c:	14400197 	bnez	v0,881188ec <psp_joypad_thread+0x70c>
+88118290:	ae43f4f0 	sw	v1,-2832(s2)
+88118294:	24040001 	li	a0,1
+88118298:	24050033 	li	a1,51
+8811829c:	0e033d41 	jal	880cf504 <pspSyscon_tx_dword>
+881182a0:	24060003 	li	a2,3
+881182a4:	9243f8ce 	lbu	v1,-1842(s2)
+881182a8:	24100003 	li	s0,3
+881182ac:	2c630003 	sltiu	v1,v1,3
+881182b0:	10600002 	beqz	v1,881182bc <psp_joypad_thread+0xdc>
+881182b4:	ae50f4f0 	sw	s0,-2832(s2)
+881182b8:	a250f8ce 	sb	s0,-1842(s2)
+881182bc:	27a40014 	addiu	a0,sp,20
+881182c0:	27a50010 	addiu	a1,sp,16
+881182c4:	0e033cdc 	jal	880cf370 <_pspSysconGetCtrl2>

@@ -1,0 +1,103 @@
+# decoder TESTS 2026-10-06 05:46:27 UTC (G2 attempt 2): python3 test/run_tests.py, python 3.12.3, standard library only
+# release maps: /home/ubuntu/psp/handoff/impl/release-20261006T052947Z/BUILD
+test_filehdr_version_crc (__main__.BuildCheck.test_filehdr_version_crc) ...     a FILEHDR whose /proc/version CRC-32 differs from stats word 2 is reported (10.1)
+ok
+test_rebuild_refused (__main__.BuildCheck.test_rebuild_refused) ...     packaged build_id: EPC analysis enabled; a rebuild's build_id: REFUSED with the reason, parsing runs
+ok
+test_above_confirmed_extent_listed_not_merged (__main__.Merge.test_above_confirmed_extent_listed_not_merged) ...     valid chunk above the file's confirmed extent (UHB conf [853504]): listed, not merged
+ok
+test_conflict_reported (__main__.Merge.test_conflict_reported) ...     modified duplicate of P seq 0: CONFLICT reported with both copies
+ok
+test_meta_classes (__main__.Meta.test_meta_classes) ...     META: FSINFO, FAT1, FATM, DIR classified; <5 failures, good writes, whole-stick burst: none
+ok
+test_rx2_not_08 (__main__.N4.test_rx2_not_08) ...     template    -> H6 flags []
+    no template -> H0 / UNCLASSIFIED flags ['rx2 literal']
+ok
+test_report_counts (__main__.NwordsSevenOrEight.test_report_counts) ...     REPORT has the nw7or8 section; p.csv keeps nwords and the flag
+ok
+test_vectors (__main__.NwordsSevenOrEight.test_vectors) ...     7 words / 8 ending 0xFFFF: same bytes, nwords 7 flagged {7, 8}; 8 not ending 0xFFFF: 8 exact; set membership against template and code expectation
+ok
+test_flush_fail_requires_raw_and_resend_dedup (__main__.RawImage.test_flush_fail_requires_raw_and_resend_dedup) ...     EVENT flush fail: refused without --raw; with --raw final, re-sent records de-duplicated
+ok
+test_raw_only_equals_files (__main__.RawImage.test_raw_only_equals_files) ...     raw image only: {'P': 8438, 'POLL': 4219, 'W': 48, 'S': 5930, 'M': 1} records, H3 (same as the copied files)
+ok
+test_short_copy_requires_raw (__main__.RawImage.test_short_copy_requires_raw) ...     short copy: refused without --raw (exit 3); with --raw final, 10395 records only in the image
+ok
+test_eighth_word_every_epc (__main__.ReleaseMaps.test_eighth_word_every_epc)
+K2 / NW1: a Nop at every instruction of the 8th iteration of the ...     8th receive iteration, 18 EPCs: pending (empty-FIFO pop named) in the 5 between the status load and the data load, j = 7 before, j = 8 after
+ok
+test_ledrmw_loaded (__main__.ReleaseMaps.test_ledrmw_loaded) ...     LEDRMW: loaded value from a1 at every EPC of both read-modify-writes (G3 bit 3 set: 0x48)
+ok
+test_maps_load (__main__.ReleaseMaps.test_maps_load) ...     /home/ubuntu/psp/handoff/impl/release-20261006T052947Z/BUILD: 4955 EPC ranges, 25 regmap labels, build_id 0x045b27d9
+ok
+test_old_grammar_refused (__main__.ReleaseMaps.test_old_grammar_refused) ...     a regmap in another syntax is an error (EPC analysis refused), not a silent partial read
+ok
+test_p6_crosscheck (__main__.ReleaseMaps.test_p6_crosscheck) ...     P6 cross-check: j = 7 with a flagged record allowed; pending + nwords j+1 = empty-FIFO pop; j = 3 with nwords 5 inconsistent
+ok
+test_s11_k (__main__.ReleaseMaps.test_s11_k) ...     S11 (P2): k from t0 with offset 0 or 2 by EPC: 8 cases, epc and lc_epc
+ok
+test_s18_j_pending (__main__.ReleaseMaps.test_s18_j_pending) ...     S18 (P6): j from t0 with offset 2 or 0 by EPC, pending window, ptr cross-check: 9 cases
+ok
+test_garbage_file_refused (__main__.Robustness.test_garbage_file_refused) ...     random bytes: refused (no FILEHDR), exit 2
+ok
+test_panel_transcription (__main__.Robustness.test_panel_transcription) ...     panel photo with EPC in ms_wait_ready and preempt count 1: reported as a Memory Stick driver hang
+ok
+test_random_corruption (__main__.Robustness.test_random_corruption) ...     300 bit flips in file 1: no crash, 248 CRC-bad chunks listed, 0 conflicts, verdict H6
+ok
+test_H1 (__main__.Shapes.test_H1) ...     H1      -> H1 | state ['H1'] triggers [] H8 flags 0 | onset {'cand': 'O2+O1+O5b+O3', 'tick': 32723}
+ok
+test_H10 (__main__.Shapes.test_H10) ...     H10     -> H1 triggered by H10 | state ['H1'] triggers ['H10'] H8 flags 2 | onset {'cand': 'O2+O1+O5b', 'tick': 32723}
+ok
+test_H2 (__main__.Shapes.test_H2) ...     H2      -> H2 | state ['H2'] triggers [] H8 flags 0 | onset {'cand': 'O2+O5b+O1', 'tick': 32723}
+ok
+test_H3 (__main__.Shapes.test_H3) ...     H3      -> H3 | state ['H3'] triggers [] H8 flags 0 | onset {'cand': 'O1+O5b', 'tick': 32723}
+ok
+test_H4 (__main__.Shapes.test_H4) ...     H4      -> H1 triggered by H4 | state ['H1'] triggers ['H4'] H8 flags 0 | onset {'cand': 'O2+O1+O5b+O5a', 'tick': 32401}
+ok
+test_H5 (__main__.Shapes.test_H5) ...     H5      -> H5 | state ['H5'] triggers [] H8 flags 0 | onset {'cand': 'O2+O5b+O1', 'tick': 32723}
+ok
+test_H6 (__main__.Shapes.test_H6) ...     H6      -> H6 | state ['H6'] triggers [] H8 flags 0 | onset {'cand': 'O2+O1+O5b', 'tick': 32723}
+ok
+test_H7 (__main__.Shapes.test_H7) ...     H7      -> H7 | state ['H7'] triggers [] H8 flags 0 | onset {'cand': 'O5a', 'tick': 33093}
+ok
+test_H8 (__main__.Shapes.test_H8) ...     H8      -> H3 | state ['H3'] triggers [] H8 flags 5 | onset {'cand': 'O1+O5b', 'tick': 32723}
+ok
+test_H9 (__main__.Shapes.test_H9) ...     H9      -> H9 | state ['H9'] triggers [] H8 flags 0 | onset {'cand': 'O2+O1+O5b+O4', 'tick': 32723}
+ok
+test_healthy (__main__.Shapes.test_healthy) ...     healthy -> NO DEATH DETECTED | state [] triggers [] H8 flags 0 | onset None
+ok
+test_none_unclassified (__main__.Shapes.test_none_unclassified) ...     none    -> H0 / UNCLASSIFIED | state [] triggers [] H8 flags 0 | onset {'cand': 'O2+O1+O5b', 'tick': 32723}
+ok
+test_50_offsets (__main__.Truncation.test_50_offsets) ...     50 cuts: 436757 complete records checked; 0 lost from complete chunks; at most 47 records of a cut chunk listed as unverified salvage (not merged)
+ok
+test_other_run_listed_and_ignored (__main__.TwoBoots.test_other_run_listed_and_ignored) ...     runs 1+2 in PSCLOG: run 2 selected, run 1 files ignored, records identical to run 2 alone
+ok
+test_same_run_two_nonces_refused (__main__.TwoBoots.test_same_run_two_nonces_refused) ...     run 2 with two nonces: refused (exit 2); with --nonce: only that boot decoded
+ok
+test_te7_stale_chunk_inside_file (__main__.TwoBoots.test_te7_stale_chunk_inside_file) ...     boot A RECS chunk inside a boot B file: listed OTHER-BOOT, not merged, 0 conflicts
+ok
+
+----------------------------------------------------------------------
+Ran 37 tests in 53.249s
+
+OK
+decoder tests; scratch /tmp/pscdec-test-7j5xo5oi
+
+# python3 check_format.py
+psc_format.py selftest: OK
+header: /home/ubuntu/psp/work/linux/include/linux/psc_format.h (12 structs, 263 #defines)
+  psc_sc           -> SC        size   80  fields  32  OK
+  psc_sc           -> M         size   80  fields  32  OK
+  psc_wext         -> WEXT      size  208  fields  26  OK
+  psc_w            -> W         size  288  fields  58  OK
+  psc_poll         -> POLL      size   40  fields  25  OK
+  psc_s            -> S         size   40  fields  15  OK
+  psc_stats        -> STATS     size  768  fields 124  OK
+  psc_ctl          -> CTL       size   32  fields   2  OK
+  psc_chunk_hdr    -> CHUNK_HDR size   20  fields   6  OK
+  psc_block_hdr    -> BLK_HDR   size    8  fields   4  OK
+  psc_filehdr      -> FILEHDR   size   44  fields  10  OK
+  psc_uhb          -> UHB       size   84  fields  21  OK
+  psc_filehdr_payload -> payload   size 1068  (44 + 768 + 256)
+header: 355 field comparisons, 253 constants compared
+check_format: OK

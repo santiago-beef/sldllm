@@ -1,0 +1,73 @@
+	***********************************
+	 uClinux on PSP 0.22 Release Notes
+	     Jackson Mo on Feb 3, 2008
+	***********************************
+
+INSTALL
+-------
+Extract the package and copy the entire folder of uClinux/ folder to PSP/GAME
+and run the loader from XMB.
+
+Though unsatisfactory but it seems true that the old loader that runs on 150
+firmware does deliver more stable performance than the new slim-compatible
+loader. Thus, if the new loader doesn't work for your PSP and you still have
+the 150 add-ons, try the old one by replacing the EBOOT.PBP with the on in
+FW150/, and moving the whole uClinux/ folder to PSP/GAME150 as well.
+
+
+REVISIONS
+---------
+Major bug-fixing/enhancements in the kernel including:
+  - Adding new ability to the kernel to detect RAM size automatically at boot
+    time, making it possible for the system to take advantage of the extra 32M
+    RAM on slim.
+
+  - Fixing the binary executable loader to correct a previous bug that caused
+    small programs (around 8K) to crash when loading.
+  
+  - Fixing the framebuffer driver enabling mmap and flush operations to access
+    the driver (See the source of the new On-Screen Keyboard for example).
+  
+  - Refactoring the joypad driver by moving all console-related function out of
+    the driver and relocating them into the console screen driver, making the
+    overall structure more clear and reasonable.
+  
+  - Adding new ability to the joypad driver to block access to the driver if
+    the HOLD lock is on. Also, a new emulate mouse driver is attached to the
+    joypad driver to simlate a PS/2 mouse device on PSP controlled by both analog
+    and dpad.
+
+Major enhancements in On-Screen Keyboard including:
+  - Allowing users to customize OSK to use dpad or analog or both as input measures
+    by specifying different options in boot command.
+
+  - Adding new snapshot-taking function to OSK. Press the LCD button to take a
+    snapshot of the screen, which will be stored at /usr/screenshots which links
+	to ms0:/picture by default.
+
+  - Adding a shutdown function in OSK to power off the machine without typing
+    commands. Press HOME+CIRCLE+CROSS to initiate the shutdown.
+
+  - Adding a new Mouse mode in OSK besides the existing Keyboard mode. Press SELECT
+    key to switch between modes.
+
+Introducing the new text console Mouse Daemon for PSP:
+  - This program severs users/developers as a demonstration of how to utilize
+    the emulate mouse in psplinux. It also provides a copy & paste function to
+	facilitate users to operate easier in text console.
+
+Major enhancements in pspboot including:
+  - Re-enabling uses to build the 150 version by specifying "FW150=1" after make.
+
+
+FILE LIST
+---------
+  uClinux/
+  uClinux/EBOOT.PBP
+  uClinux/FW150
+  uClinux/FW150/EBOOT.PBP
+  uClinux/kmodlib.prx
+  uClinux/pspboot.conf
+  uClinux/README
+  uClinux/vmlinux-0.22.bin
+

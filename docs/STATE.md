@@ -4,11 +4,12 @@ Living log. Agents: read this first, update it when status or decisions change. 
 
 ## Current status
 
-- Repo scaffolding created (AGENTS.md, CLAUDE.md, Gemini config). No project code yet.
+- Imported PSP uClinux / hacking codebase into `psp/` (kernel sources, uClinux patches, ring tests, decoder, pscol, and tooling). Build artifacts, dumps, and ancient toolchains excluded.
 
 ## Decisions
 
 <!-- Format: YYYY-MM-DD: decision. Why. -->
+- 2026-10-07: Imported PSP workspace under `psp/` in `sldllm`. Excluded compiled binaries (ELF/bFLT), large dumps, intermediate logs, and toolchain (`staging_dir`) to keep repo size clean (~320MB).
 - 2026-09-30: `AGENTS.md` is the single instruction file; `CLAUDE.md` imports it and Gemini is configured to read it. Why: one file to maintain across three tools.
 
 ## Open questions

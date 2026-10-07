@@ -1,0 +1,1189 @@
+# closure.diff: every file the Stage 3 closure changed (unified diffs).
+# 1. design/DESIGN.md (section 18 appended) and impl/IMPLEMENTATION.md (section 10 appended), against the pre-closure copies in stage3/pre-closure/ (sha256 in stage3/pre-closure/SHA256SUMS)
+# 2. tooling: git -C work/linux diff 16d3bc28 0b5ba13e (psc-tools/ = work/decoder and work/pscol/test; 16d3bc28 imports them as delivered at G2 attempt 2, byte-identical to IMPLEMENTATION 5.4)
+# No kernel, initramfs, pscol or package file is in this diff. design/RUNBOOK.md is unchanged.
+
+--- a/design/DESIGN.md
++++ b/design/DESIGN.md
+@@ -2904,3 +2904,195 @@
+ `banner.txt`; IMPLEMENTATION.md restates the 5.4 counts if `psc.c` or
+ `syscon.c` change, and both image growths. The kernel needs no change for these
+ items.
++
++---
++
++## 18. Stage 3 closure (addendum after G2 attempt 2; text and decoder only)
++
++**Scope.** Closure of the advisories that `gates/LOG.md` (G2 attempt 2,
++"open:") lists before G3 R1: `gates/G2-attempt2-review.md` section 8 N1-N3;
++`gates/G2-attempt2-verify.md` "Findings" 1-4; `gates/G1-ruling1-review.md`
++section 4 A-1..A-6; `gates/G1-ruling1-redteam.md` corrections K1 and K3, and
++K5-K8, which N2 names. **No mechanism, record, field, ring, check, HUD line,
++panel state or runbook step changed. The kernel, `pscol` and the package are
++unchanged:** the released `vmlinux-0.22.bin` is still
++`4f9b69dcc72cb8e61322311fa4aabde5ea6f65fe3fc1158089af19161c51cac8`, and the
++`stage2-trace` HEAD after the closure commits rebuilds to the same bytes with
++the release's identity (`handoff/stage3/logs/pinned-rebuild-identity.log`).
++**Precedence:** where a sentence of sections 0-17 conflicts with this section,
++this section applies; each replaced sentence is named below. The change to
++this file is `handoff/stage3/closure.diff`; the per-item record is
++`handoff/stage3/closure.md` and IMPLEMENTATION.md "Stage 3 closure".
++
++### 18.1 Measured cost outside the window (N1; verifier finding 4; A-1, A-2)
++
++Re-measured from the released image by executing its machine code with an
++interpreter written for this closure (`handoff/stage3/measure/`, independent
++of `impl/pathcount.py`; `SUMMARY.txt` there). Same assumptions as 5.4
++(1 instruction per cycle, Count at the core clock, no cache: UNVERIFIED). The
++figures **supersede** the estimates of 5.4, 7.1, 7.3 and 11.1 R6, R13 named
++in the last column; the run still measures them (`p_rec_cost_*`,
++`w_rec_cost_max`, `panel_cost_*`, the per-poll gap).
++
++| Path (release vs baseline build) | Added | ≈ µs | Replaces |
++|---|---|---|---|
++| Thread command, before S5 / S5..S20 / after S20 (A-1: path = 0x08 or 0x33 reply valid, IE 1, no `lc`, LED or `pre` match, no new maximum) | +75 / **0** / +482 (0x08), +485 (0x33); after S20 = hand-off 62 + `psc_xfer_out` 32, `psc_sc_exit` 167-170, `psc_fill_sc` 111, `memset` 44, `memcpy` 29, `psc_dcount` 30, wrapper tail | 2.52-2.53 per command | 5.4 row 2 parts (≈ 60 / ≈ 85 + ≈ 250-300 + 151); the totals of §17 R-3 hold |
++| G3-low gap, 0x33's S20 to 0x08's S13 | +566 instructions over the baseline's 252 (+485, +6 thread stage code, +75); 10 MMIO accesses in the gap, unchanged | +2.56 | 5.4 row 3, 7.3 bullet 4 (inside "2.1-3 µs") |
++| Every tick | +48 (T1 and `psc_tick_hook`) | 0.22 | 5.4 row 6, 7.1 "Timer interrupt" (≈ 16) |
++| A tick that finds the thread running in a command (T2a) | +160 more (+208 in all) | 0.94 | 5.4 row 6, 7.1 (≈ +33) |
++| Watchdog tick, thread idle: whole tick / the Nop's part | +925 / +861 after its S20, +64 before its S5; first Nop of a boot +994 | 4.19 (4.50 first) | 5.4 row 5, 7.1 (≈ 2-4) |
++| Watchdog tick interrupting the thread in a command (H4 straddle): the thread resumes this much later | +1,104 (first of a boot +1,173) | 5.00 | 7.1, 7.3 bullet 4 and 11.1 R6 (≈ 2-4 µs) |
++| Stall panel paint (T2d, never a watchdog tick) | 205,884 and 228,520 instructions for two panel contents: fill 139,575 and D-cache write-back 1,289 fixed, text content-dependent | 0.93-1.03 ms | 5.4 last row, 7.1 "Stall panel", 11.1 R13 (0.2-1 ms) |
++| Thread wake-up; a switch while it waits; its switch-in; its switch-out to sleep | 109; 136 each; 203; 45 (plus ≈ 16 inline call instructions, counted from the listing) | 0.49; 0.62; 0.92; 0.20 | 5.4 row 7 (≈ 25; ≈ 15, ≈ 30 the last) |
++| Thread preempted inside a command: its switch-out; each switch while it is off the CPU; its switch-in | 150; 144; 190 | 0.68; 0.65; 0.86 | 5.4 row 9 (≈ 15 each, ≈ 15 more) |
++| Per poll (2 commands, stage code, `psc_poll_begin` 95, `psc_poll_end` 110, wake-up, switch-in, switch-out) | ≈ 1,710, plus 136 per switch while the thread waits | ≈ 7.7 against ≥ 56 ms (≈ 0.014 %) | 5.4 row 4 (≈ 1,200-1,500, ≈ 0.01 %) |
++| Stack (A-2) | thread path +208 B; Nop path +216 B (344 B below `pt_regs`, 520 B below the interrupted `sp` with `PT_SIZE` 176, baseline 304 B); T2d 488 B below `pt_regs` (664 B), never on a watchdog tick | | 5.3 "≈ 280 B deeper" (conservative; the measured figure replaces it) |
++
++The implementer's interpreter (IMPLEMENTATION 9.2) gives the same counts,
++except a whole watchdog tick +922 and the first Nop +990 (3-4 instructions
++apart; the scenario state differs slightly, which word is UNVERIFIED), and the
++panel text (content). The scheduler-hook, poll-hook and per-poll rows are new
++measurements; they too are above their 5.4 estimates. **All of this runs
++outside S5..S20, takes no lock and masks nothing new**; D10's acceptance test
++(2.1, 7.2, §17 R-2) is unaffected (0 instructions added in the window, 105 =
++105).
++
++### 18.2 The perturbation argument with these counts (N1, K6; 7.3, R6)
++
++- **Start phases (7.3 bullet 1).** Against the tick on which the thread wakes,
++  the 0x33's S5 now comes ≈ 553 instructions (≈ 2.5 µs) later (tick hook 48,
++  wake-up 109, switch-in 203, `psc_poll_begin` 95, loop top 7, inline hooks
++  ≈ 16, entry 75), not ≈ 0.3-0.6 µs; the 0x08's S5 ≈ 1,119 (≈ 5.1 µs) later,
++  not ≈ 2.4-3.4 µs; a command resumed after a Nop ≈ 5.0 µs later, not ≈ 2-4
++  µs. **(K6)** The change in the chance that a given Nop lands in a given
++  window is at most δ × (the largest density of window starts or ends per unit
++  of tick phase near the Nop's tick edge). That is δ/T (≤ 0.13 % with δ =
++  5.1 µs) only when the phases are spread; the thread wakes on a tick, so its
++  phases are concentrated, and the bound is the measured density, which the
++  decoder prints (18.5). Cache misses can make δ larger (UNVERIFIED).
++- **G3-low gap (7.3 bullet 4, R6).** +2.56 µs over a baseline gap of ≈ 252
++  instructions plus 10 MMIO accesses: the instruction part roughly triples
++  (G1-ruling red team EX1). Whether the 5 µs that the commented-out wait hints
++  at (`syscon.c:95-97`, `:142-144`) lies between the gap with and without the
++  instrumentation depends on the MMIO latency m (UNVERIFIED); the decoder now
++  computes an upper bound of m from the run's own shortest command and prints
++  both gaps (18.5, K5). It stays **the one direction in which the
++  instrumentation could hide a failure.**
++- **R6 (G4L).** A level-sensitive G4L pulse shorter than ≈ 5 µs (not ≈ 2-4 µs)
++  could be missed on the resumed thread; judged unlikely as before (separate
++  acknowledge write, `syscon.c:159`).
++- **Conclusion (7.3 bullet 5) unchanged:** nothing is added where a Nop can
++  land, every phase and gap is recorded per command, and the shift is small
++  against the wake-up delays that load already causes (`wk_delay`, `pre_tot`).
++
++### 18.3 Corrected wording (K1, A-5, A-3, A-6, K7, A-2)
++
++- **1.2 offset 22 and 2.1 A4 (K1, A-5).** Read: "`nwords` is exact for 0 to
++  6 received words and for 8 when the 8th word is not 0xFFFF. **Every recorded
++  7 is flagged** `nw7or8`: a 7-word reply leaves `rx[14..15]` at the prefill
++  (`syscon.c:92-93`), so 7 and 8-ending-0xFFFF give the same record. The
++  identity of the two exit states (`t0` = 16, `a3` = `rx_buf` + 16) is a
++  property of the **compiled** receive loop of this build (release
++  `880cf218..880cf264`; baseline listing +148..+167; G2 attempt-1 review 4.2),
++  not of `syscon.c:201-217`, where `i` and `ptr` differ (14 against 16). A
++  rebuild that changes `syscon.c`, `psc.c` or the compiler flags re-derives the
++  exit table from object code (K9; IMPLEMENTATION 9.2.5)." This replaces
++  "exact for 0 to 7 received words; one exception …" in 1.2 (DESIGN.md:248),
++  in 2.1 A4 (:476) and in the §17 R-1 row (:2893).
++- **7.2 (b) (A-3).** The changed delay slot belongs to the **first-iteration**
++  −3 exit of the drain loop (baseline `880cef30..880cef3c`, release
++  `880ceff4..880cf000`), which fires only if the volatile `spin` slot reads 0
++  right after `sw` stored 1,000,000; the full-budget −3 exit (baseline
++  `880cef54/58`, release `880cf018/1c`, `beq v1,v0` / `li t3,-3`) is unchanged.
++  This replaces "it occurs only on a −3 exit, after 1,000,001 drain
++  iterations" (:1790-1791); the conclusion is stronger, not weaker.
++- **Summary 1 (A-6).** The delay-slot allowance (:51-53) reads "an exit
++  branch's delay slot after the exit decision **and after the path's last MMIO
++  access**", as 2.1 and 7.2 already say.
++- **4.2 and 5.3 figures (K7; :904-907, :1551-1553).** At G2 attempt 1 the
++  text was **51,968** B, not 51,904 (`text_len = data_start`, which includes
++  the 64-byte header, `fs/binfmt_flat.c:458`); the sum 183,968 B was right.
++  The released `pscol` is text 52,768 + data 2,912 + bss 110,976 + stack
++  16,384 = **183,040 B**, one 256 KB block per process (IMPLEMENTATION 1.4). Citations: `mm/nommu.c:745`
++  (not `:744`, :906); `include/asm-mips/thread_info.h:66-67` (not `:65-66`,
++  :1559) and `:82`.
++- **5.3 stack (A-2).** "≈ 280 B deeper" (:1559-1562) is replaced by the
++  measured figures of 18.1 (+216 B on the Nop path, +208 B on the thread path).
++
++### 18.4 Build identity (K3, A-4; verifier findings 3 and 1)
++
++- **1.7 words 0-4 and 10.1 (K3).** "The value differs between any two builds,
++  since the banner carries the build time" (:417) and "A rebuild of the same
++  commit has another banner" (:2084-2086) are replaced by: "The value differs
++  between builds made with the **default identity** (`build.sh` with
++  `KBUILD_BUILD_VERSION`, `KBUILD_BUILD_TIMESTAMP` and `BUILD_HOSTNAME` unset
++  and `REPRODUCE_BASELINE` = 0, `build.sh:62-69`; the log records them,
++  `build.sh:80`). An identity-pinned build reproduces a banner and so its
++  `build_id`: from the same commit it reproduces the image byte for byte; from
++  another commit it would carry the same `build_id` over other code. The
++  packaged build was made with the default identity
++  (`work/logs/build-20261006T052947Z.log` line 8)."
++- **10.1, the build directory (K3, A-4).** The example
++  "`work/out/20261006T021722Z`, `0x9b3c599e`" (:2081-2082) is replaced by:
++  "the packaged build's directory, `deploy/uClinux_TRACE/BUILD` (a copy of
++  `handoff/impl/release-20261006T052947Z/BUILD`, written by `mkmaps.py`),
++  belonging to the image recorded at G3 R3 (`gates/LOG.md`, G2 attempt 2:
++  `4f9b69dc…cac8`, `build_id` `0x045b27d9`)." Added rule: **the decoder
++  requires `BUILD/SHA256SUMS` to verify and `BUILD/IMAGE.sha256` to name that
++  image** (pinned in the decoder before the run; `--expect-image` overrides for
++  test builds and is printed), else the EPC analysis is refused with the
++  reason, as for a `build_id` mismatch. A rebuild of the same commit with the
++  default identity (verifier finding 3: 8 banner bytes differ, `build_id`
++  `0x608a79f9`) is refused by both checks; an identity-pinned build of another
++  commit by the image hash.
++
++### 18.5 Decoder outputs added to 10.7 (K5, K6, K8, A-5, N3)
++
++Fixed before the run (G3 R6); constants from 18.1.
++
++- **Step 6 and step 8, G3-low gap (K5).** Printed: the recorded gap g = 0x08
++  `c_in` − 0x33 `c_out` per poll (minimum, 1st percentile, median); an upper
++  bound of the MMIO latency, m ≤ min over clean P records (ret > 0, no retry,
++  `drain` 0, `dtick` 0, `wn` 0, not preempted, `lc_n` 0) of (`c_out` − `c_in` −
++  I) / N with I = 404 (0x08) or 410 (0x33) + 11 `ack_polls` + 15 `nwords` + 5
++  `rx[1]` and N = 16 + `ack_polls` + 2 `nwords` (the executed instructions and
++  MMIO accesses of that path, exact on the release image; cache misses only
++  raise the bound); and, at those three values of g, the S20→S13 gap with the
++  instrumentation, g + 399 instructions + 10·m for m ∈ [0, m_ub], and without
++  it, that minus 566 instructions and minus the excess of `p_rec_cost_last`
++  over its 312 instructions, with whether 5 µs lies between them. Step 8 names
++  the gap as "the one masking direction" with these numbers.
++- **Step 6, windows near a tick edge (K6).** Per command, the number of
++  windows (S5 at `c_in` + 200/206, S20 at `c_out` − 188/158 Counts) that start
++  or end within δ (2.5 µs for 0x33, 5.1 µs for 0x08) after a tick edge, and
++  after a watchdog edge (1250k: straddles the shift could have removed or
++  created), and within δ before one.
++- **Step 6, stack headroom (K8).** For every WT record whose interrupted
++  context was in kernel mode (`ext_flags` b2): `sp` − its 8 KB stack's base −
++  52 (`sizeof(struct thread_info)`, `TI_REGS` 48 + 4), and that minus the Nop
++  path's 520 B; the minimum over the run; **flagged below 1 KB**. A user-mode
++  interruption runs the Nop on the kernel stack top (7,588 B left).
++- **Steps 4-5 (A-5).** For every onset candidate and for the classification
++  window, the records flagged `nw7or8` inside onset − 30 s … onset + 60 s, per
++  command and origin: "the ambiguity is live in this window".
++- **Evidence text (N3).** The H4 step line, the WT listing and the WB line
++  print `nwords` as `7|8` for a flagged record, as the timeline does.
++- **8.5 decoder rows.** Tests for each (decoder `test/run_tests.py` class
++  `Stage3Closure`: a flagged Nop reply in an H4 stream; the image check with
++  the packaged BUILD, a pinned-identity BUILD of another image, a tampered
++  BUILD file and the default; the K5 bound arithmetic; K6 and K8 counts; and
++  `NwordsSevenOrEight.test_evidence_text` for the `7|8` text).
++
++### 18.6 Items, one line each
++
++| Item | Closed by |
++|---|---|
++| G2 N1 (measured costs above the design figures) | 18.1, 18.2 |
++| G2 N2 (K1, K3, K5, K6, K7, K8; A-2, A-3, A-5, A-6) | 18.3, 18.4, 18.5 |
++| G2 N3 (7\|8 in the evidence lines) | 18.5, decoder |
++| Verifier 1 (`run.sh` argument forwarding) | test tooling only (IMPLEMENTATION "Stage 3 closure") |
++| Verifier 2 (pspboot load, R20) | not here: the Stage 3 R20 item (`handoff/stage3/r20/REPORT.md`); 11.1 R20 unchanged |
++| Verifier 3 (identity per build) | 18.4 |
++| Verifier 4 (costs not re-measured) | 18.1 |
++| A-1, A-2, A-3, A-4, A-5, A-6 | 18.1, 18.1/18.3, 18.3, 18.4, 18.3/18.5, 18.3 |
++| K1, K3 | 18.3, 18.4 |
+--- a/impl/IMPLEMENTATION.md
++++ b/impl/IMPLEMENTATION.md
+@@ -929,3 +929,83 @@
+ pscol, the decoder, `mkmaps.py`, `pathcount.py`, `package.sh` and the
+ initramfs tool, and this revision of IMPLEMENTATION.md, are by the
+ G2-attempt-2 implementer.
++
++---
++
++## 10. Stage 3 closure (2026-10-07, the Stage 3 closer)
++
++Closure of the advisories `gates/LOG.md` (G2 attempt 2, "open:") lists before
++G3 R1. **No kernel code, no `pscol` source or binary, and no package file
++changed.** What changed: design text (DESIGN.md section 18, an addendum), the
++decoder and the `pscol` host tests (tooling), and a re-measurement. The
++per-advisory record, with each advisory's wording, is
++`handoff/stage3/closure.md`; the unified diff of every changed file is
++`handoff/stage3/closure.diff`.
++
++### 10.1 The release is untouched (evidence)
++
++| Check | Result | Log |
++|---|---|---|
++| sha256 of `deploy/uClinux_TRACE/PSP/GAME/uClinux_TRACE/vmlinux-0.22.bin` and `out/20261006T052947Z/vmlinux-0.22.bin`, before and after | `4f9b69dcc72cb8e61322311fa4aabde5ea6f65fe3fc1158089af19161c51cac8` both times | `stage3/logs/closer-prestate.log`, `closer-poststate.log` |
++| Package `SHA256SUMS`, `BUILD/SHA256SUMS` | all OK, before and after | same |
++| `git diff --name-only 48dcc1b9..HEAD` on `stage2-trace` | only `psc-tools/…` (16 files); `git diff 48dcc1b9 HEAD -- . ':(exclude)psc-tools'` is empty | `closer-poststate.log` |
++| Rebuild of the final HEAD `0b5ba13e` with the release's identity (`KBUILD_BUILD_VERSION=1`, `KBUILD_BUILD_TIMESTAMP='Tue Oct 6 05:32:47 UTC 2026'`, `BUILD_HOSTNAME=psp-work-build`; a check, not a release) | `vmlinux`, `vmlinux.bin`, `vmlinux-0.22.bin` and `System.map` byte-identical to the release and to the deploy file (`4f9b69dc…`); same warning set. An earlier run at `23b0c625` gave the same | `stage3/logs/pinned-rebuild-identity.log`; `work/out/20261007T165211Z` (and `20261007T163922Z`) |
++| `pscol` bFLT and sources (`pscol`, `pscol.c`, `pscol.h`, `main.c`, `os_target.c`) | sha256 unchanged (`7d7a5d78…`, `1e89ac0a…`, as 5.4) | `stage3/logs/pscol-before-tests.sha256`, `closer-poststate.log` |
++| Original tree manifest | `sha256sum -c` exit 0, before and after | `closer-prestate.log`, `closer-poststate.log` |
++
++### 10.2 Commits on `stage2-trace` (author `Stage 3 closer (Claude agent)`)
++
++| Commit | Content |
++|---|---|
++| `16d3bc28` | `psc-tools/decoder` and `psc-tools/pscol-test`: the host tooling as delivered at G2 attempt 2 (byte-identical to the 5.4 files), so the closure changes are reviewable as commits. Not a kernel input: no Makefile refers to `psc-tools/`, `CONFIG_LOCALVERSION_AUTO` is off (`.config:154`) |
++| `145cdb73` | decoder: N3, K3, K5, K6, K8, A-5 (DESIGN 18.4, 18.5); 6 new tests |
++| `23b0c625` | `pscol` host tests: verifier advisory 1 |
++| `0b5ba13e` | decoder test: the N3 case in `NwordsSevenOrEight` (`test_evidence_text`); 44 tests |
++
++The working copies `work/decoder` and `work/pscol/test` stay the files the
++tools are run from; they are byte-identical to `psc-tools/` at `0b5ba13e`
++(`cmp`). The repository's `user.name` was left as it was; the commits carry
++the closer's name through `git -c`.
++
++### 10.3 Item by item
++
++| Item | Change | Where (file:line) | Evidence |
++|---|---|---|---|
++| G2 N1, verifier 4, A-1 | Re-measured from the released image with a new interpreter; design figures restated | `stage3/measure/measure.py`, `mips32.py`; `SUMMARY.txt`; DESIGN 18.1-18.2 (DESIGN.md:2927-2986) | `measure-output.json`. Equal to 9.2 for P08, P33, TICK, WDP and the stacks; WD +925 (9.2: +922). New: scheduler hooks 109/136/203/45, preempted 150/144/190, poll begin/end 95/110, per poll ≈ 1,710 |
++| G2 N2: K1, A-5 (wording) | DESIGN 18.3 | DESIGN.md:2990-3001 | release loop `880cf218..880cf264` read from the listing; 9.2.5 table |
++| G2 N2: K3, A-4; verifier 3 | DESIGN 18.4; decoder refuses a BUILD that is not the released image's | `decoder/pscdec_analysis.py:64` (`RELEASE_IMAGE_SHA256`), `:482`; `decoder/pscdec.py:207-249` (`image_identity`), `:267` (`--expect-image`), `:293`, `:618`; `decoder/synth.py:84-98` | test `Stage3Closure.test_k3_image_identity` (`decoder/test/run_tests.py:809`) |
++| G2 N2: K5 | Gap, MMIO bound, with/without, masking direction in step 8 | `decoder/pscdec_analysis.py:70-79`, `:1630` (`mmio_bound`), `:1654` (`g3_gap`), `:1609`; `decoder/pscdec.py:642` | `test_k5_mmio_bound_arithmetic` (`:876`), `test_k5_k6_k8_report_lines` (`:857`) |
++| G2 N2: K6 | Windows near a tick or watchdog edge | `decoder/pscdec_analysis.py:84-87`, `:1705` (`edge_windows`); `decoder/pscdec.py:645` | `test_k6_k8_counts` (`:893`) |
++| G2 N2: K7, A-2 | Figures and citations | DESIGN 18.3 (DESIGN.md:3012-3020) | `fs/binfmt_flat.c:458`, `mm/nommu.c:745`, `include/asm-mips/thread_info.h:66-67`, `:82` read in the original tree |
++| G2 N2: K8 | Stack headroom per Nop, minimum, flag < 1 KB | `decoder/pscdec_analysis.py:91-93`, `:1755` (`stack_headroom`); `decoder/pscdec.py:648` | `test_k6_k8_counts`; `PT_SIZE` 176, `TI_REGS` 48, `_THREAD_SIZE` 8192 (`work/linux/include/asm-mips/asm-offsets.h`), stack top `_THREAD_SIZE - 32` (`arch/mips/kernel/r4k_switch.S:88-89`) |
++| G2 N2: A-3, A-6 | Wording | DESIGN 18.3 (DESIGN.md:3002-3011) | release `880ceff4..880cf000` and `880cf018/1c` read from the listing |
++| G2 N3; A-5 (optional part) | `7\|8` in the H4, WT and WB lines; ambiguity per candidate and classification window | `decoder/pscdec_analysis.py:31` (`nwtext`), `:1307`, `:1337-1338`, `:1362`, `:1619`; `decoder/pscdec.py:516`, `:587`; `decoder/synth.py:211`, `:471` | `test_n3_a5_evidence_prints_7or8` (`:782`), `test_n3_wb_line` (`:799`), `NwordsSevenOrEight.test_evidence_text` (`:705`) |
++| Verifier 1 | `run.sh` forwards every argument and refuses `krn <banner>` alone; with no banner, `krn` and `all` run the packaged form against the package's BUILD, so `checks.sh` (not edited: outside `pscol/test`, and it rebuilds the delivered bFLT in place, so it is not run now) gets the four KRN rows too | `pscol/test/run.sh:16-20`; `pscol/test/sim.c:1597-1633`, `:1738-1753` | `stage3/logs/pscol-run-krn.log` (4/4 by default and by argument; usage error rc 2), `pscol-run-all-20.log` (RESULT PASS), `pscol-asan-krn.log` |
++| Verifier 2 (R20) | Not handled here: the Stage 3 R20 item (`handoff/stage3/r20/REPORT.md`) | — | — |
++
++### 10.4 Tests after the closure
++
++- Decoder: `python3 test/run_tests.py`: **44 tests, OK** (37 + 6
++  `Stage3Closure` + `NwordsSevenOrEight.test_evidence_text`); `check_format.py` OK. `work/decoder/TESTS.txt` regenerated,
++  copy `stage3/logs/decoder-tests.log`.
++- `pscol` host tests: `test/run.sh all 20`: `RESULT PASS (0 failing cases)`
++  with the four KRN rows (`stage3/logs/pscol-run-all-20.log`); an ASan/UBSan
++  build of the KRN test is clean (`pscol-asan-build.log`, `pscol-asan-krn.log`).
++  `work/pscol/CHECKS.txt` stays the G2-attempt-2 record (regenerating it runs
++  `cbuild.sh`, which rewrites the delivered bFLT).
++
++### 10.5 Tooling sha256 after the closure (supersedes 5.4 for these files)
++
++| File | sha256 |
++|---|---|
++| `work/decoder/pscdec.py` | `cd18fae7b6a9412857f1717ee2ec88722a34cc69e03e15ba93950e6c65378ed0` |
++| `work/decoder/pscdec_analysis.py` | `a979e6b3c6f4a47b10591ede9e5fea8a63f2b9be7bfa4eeec4fe56a2f01f3713` |
++| `work/decoder/synth.py` | `fea3f2dbc0df84ae46e8603700026a9f958c49f81d212fed04ff2757622f9649` |
++| `work/decoder/test/run_tests.py` | `5cb2bebb69eea5afd844c51bebe21cd314a5bc633becb5f995f1f8ee5d2b6d83` |
++| `work/decoder/TESTS.txt` | `41bb4b65282c19f82cee1a3a10e18a002fce02ef232e366cc9c64c6aae9538b8` |
++| `work/decoder/README` | `f587e16ad9830a97393493522d1c42aa252e9d9af09654c8946cbd1234fd6101` |
++| `work/pscol/test/run.sh` | `c246e5cfbadeef9c6566b5e1022ead073aa4358aa9ab3270fa19ff9dce1d7c5e` |
++| `work/pscol/test/sim.c` | `20f0ea23044e8031e6154b0b1dc6e6da97c576d6168b8ef8594a9afc5a8524ad` |
++
++`pscdec_parse.py`, `psc_format.py`, `psc_maps.py`, `check_format.py`,
++`pscol/test/vectors.c` and `xcheck.py` are unchanged (5.4 values).
+diff --git a/psc-tools/decoder/README b/psc-tools/decoder/README
+index 5c17ff24..8dc93ddf 100644
+--- a/psc-tools/decoder/README
++++ b/psc-tools/decoder/README
+@@ -26,7 +26,12 @@ Decode a run:
+   python3 pscdec.py -o OUT --build BUILD_DIR --times times.txt --raw stick.img PSCLOG/
+ BUILD_DIR is the packaged build's BUILD directory (handoff/impl/mkmaps.py;
+ deploy/uClinux_TRACE/BUILD): System.map, epcmap.txt, regmap.txt, build_id.txt,
+-IMAGE.sha256, panellayout.txt, vmlinux of the exact image that ran. Exit 0 = final REPORT.md; 3 = RAW IMAGE
++IMAGE.sha256, panellayout.txt, vmlinux of the exact image that ran.
++Stage 3 closure (DESIGN 18, K3): the EPC analysis is refused unless
++BUILD/SHA256SUMS verifies and BUILD/IMAGE.sha256 names the released image
++4f9b69dc...cac8 (the G3 R3 record); --expect-image SHA256 sets another image
++(the tests use the synthetic one), --expect-image any disables the check and
++REPORT.md says so. Exit 0 = final REPORT.md; 3 = RAW IMAGE
+ REQUIRED (REPORT-NOT-FINAL.md only); 2 = inputs refused (e.g. one run number
+ with two nonces: choose --nonce). Inputs are opened read-only.
+ 
+diff --git a/psc-tools/decoder/TESTS.txt b/psc-tools/decoder/TESTS.txt
+index 6e429af3..5c762a06 100644
+--- a/psc-tools/decoder/TESTS.txt
++++ b/psc-tools/decoder/TESTS.txt
+@@ -1,5 +1,5 @@
+-# decoder TESTS 2026-10-06 05:46:27 UTC (G2 attempt 2): python3 test/run_tests.py, python 3.12.3, standard library only
+-# release maps: /home/ubuntu/psp/handoff/impl/release-20261006T052947Z/BUILD
++# decoder TESTS 2026-10-07 16:50:32 UTC (Stage 3 closure, DESIGN 18): python3 test/run_tests.py, python 3.12.3, standard library only
++# release maps: /home/ubuntu/psp/handoff/impl/release-20261006T052947Z/BUILD; packaged BUILD: /home/ubuntu/psp/work/deploy/uClinux_TRACE/BUILD
+ test_filehdr_version_crc (__main__.BuildCheck.test_filehdr_version_crc) ...     a FILEHDR whose /proc/version CRC-32 differs from stats word 2 is reported (10.1)
+ ok
+ test_rebuild_refused (__main__.BuildCheck.test_rebuild_refused) ...     packaged build_id: EPC analysis enabled; a rebuild's build_id: REFUSED with the reason, parsing runs
+@@ -13,6 +13,9 @@ ok
+ test_rx2_not_08 (__main__.N4.test_rx2_not_08) ...     template    -> H6 flags []
+     no template -> H0 / UNCLASSIFIED flags ['rx2 literal']
+ ok
++test_evidence_text (__main__.NwordsSevenOrEight.test_evidence_text)
++G2 attempt 2 N3: the H4/WB/WT evidence lines print a flagged record as 7|8 ...     evidence text: 7 words and 8 ending 0xFFFF print 7|8, exact counts print the number (N3)
++ok
+ test_report_counts (__main__.NwordsSevenOrEight.test_report_counts) ...     REPORT has the nw7or8 section; p.csv keeps nwords and the flag
+ ok
+ test_vectors (__main__.NwordsSevenOrEight.test_vectors) ...     7 words / 8 ending 0xFFFF: same bytes, nwords 7 flagged {7, 8}; 8 not ending 0xFFFF: 8 exact; set membership against template and code expectation
+@@ -68,6 +71,19 @@ test_healthy (__main__.Shapes.test_healthy) ...     healthy -> NO DEATH DETECTED
+ ok
+ test_none_unclassified (__main__.Shapes.test_none_unclassified) ...     none    -> H0 / UNCLASSIFIED | state [] triggers [] H8 flags 0 | onset {'cand': 'O2+O1+O5b', 'tick': 32723}
+ ok
++test_k3_image_identity (__main__.Stage3Closure.test_k3_image_identity) ...     packaged BUILD: IMAGE.sha256 = the released image, SHA256SUMS verifies 8 files
++    image identity: packaged BUILD accepted; a pinned-identity BUILD of another image refused with build_id matching; a tampered BUILD file refused; the default pins the released image
++ok
++test_k5_k6_k8_report_lines (__main__.Stage3Closure.test_k5_k6_k8_report_lines) ...     REPORT step 6 prints K5 (gap min/p1/median, with/without instrumentation, m bound), K6 (edge windows), K8 (stack headroom); step 8 names the gap as the one masking direction
++ok
++test_k5_mmio_bound_arithmetic (__main__.Stage3Closure.test_k5_mmio_bound_arithmetic) ...     m bound: (c_out - c_in - I) / N with I = 404 + 11 ack + 15 nwords + 5 rx[1], N = 16 + ack + 2 nwords; ineligible records skipped
++ok
++test_k6_k8_counts (__main__.Stage3Closure.test_k6_k8_counts) ...     K6: windows within delta of a (watchdog) tick edge counted; K8: kernel-mode headroom sp - stack base - 52 - 520 flagged below 1 KB, user-mode Nops on the kernel stack top
++ok
++test_n3_a5_evidence_prints_7or8 (__main__.Stage3Closure.test_n3_a5_evidence_prints_7or8) ...     H4 evidence and the WT listing print 'nwords 7|8' for a flagged Nop reply (N3); the classification window says the ambiguity is live (A-5)
++ok
++test_n3_wb_line (__main__.Stage3Closure.test_n3_wb_line) ...     nwtext: 7|8 when flagged, else the raw value; the WB line uses it
++ok
+ test_50_offsets (__main__.Truncation.test_50_offsets) ...     50 cuts: 436757 complete records checked; 0 lost from complete chunks; at most 47 records of a cut chunk listed as unverified salvage (not merged)
+ ok
+ test_other_run_listed_and_ignored (__main__.TwoBoots.test_other_run_listed_and_ignored) ...     runs 1+2 in PSCLOG: run 2 selected, run 1 files ignored, records identical to run 2 alone
+@@ -78,12 +94,10 @@ test_te7_stale_chunk_inside_file (__main__.TwoBoots.test_te7_stale_chunk_inside_
+ ok
+ 
+ ----------------------------------------------------------------------
+-Ran 37 tests in 53.249s
++Ran 44 tests in 60.395s
+ 
+ OK
+-decoder tests; scratch /tmp/pscdec-test-7j5xo5oi
+ 
+-# python3 check_format.py
+ psc_format.py selftest: OK
+ header: /home/ubuntu/psp/work/linux/include/linux/psc_format.h (12 structs, 263 #defines)
+   psc_sc           -> SC        size   80  fields  32  OK
+diff --git a/psc-tools/decoder/pscdec.py b/psc-tools/decoder/pscdec.py
+index e291dede..19ea20eb 100644
+--- a/psc-tools/decoder/pscdec.py
++++ b/psc-tools/decoder/pscdec.py
+@@ -204,6 +204,51 @@ def panel_parse(spec, m):
+     return out
+ 
+ 
++def image_identity(bd, image_sha, expect):
++    """10.1 / K3: the BUILD directory must belong to the released image: its
++    SHA256SUMS verifies every file it lists (IMAGE.sha256 included), and
++    IMAGE.sha256 names vmlinux-0.22.bin with the expected hash (default: the
++    G3 R3 record, A.RELEASE_IMAGE_SHA256). Returns (expect, errors, note)."""
++    import hashlib
++    if expect == "any":
++        return None, [], "image identity check DISABLED (--expect-image any)"
++    errs = []
++    if not bd:
++        return expect, ["image identity not established: no BUILD directory (--build) with IMAGE.sha256"], ""
++    sums = os.path.join(bd, "SHA256SUMS")
++    listed = {}
++    if not os.path.exists(sums):
++        errs.append("BUILD/SHA256SUMS missing")
++    else:
++        with open(sums) as f:
++            for line in f:
++                q = line.split()
++                if len(q) >= 2:
++                    listed[q[1].lstrip("*")] = q[0].lower()
++        for name, h in sorted(listed.items()):
++            fp = os.path.join(bd, name)
++            if not os.path.exists(fp):
++                errs.append("BUILD/SHA256SUMS lists %s, which is missing" % name)
++                continue
++            with open(fp, "rb") as fi:
++                if hashlib.sha256(fi.read()).hexdigest() != h:
++                    errs.append("BUILD/%s does not match BUILD/SHA256SUMS" % name)
++        if "IMAGE.sha256" not in listed:
++            errs.append("BUILD/SHA256SUMS does not cover IMAGE.sha256")
++    img = os.path.join(bd, "IMAGE.sha256")
++    if image_sha is None or not os.path.exists(img):
++        errs.append("BUILD/IMAGE.sha256 missing")
++    else:
++        with open(img) as fi:
++            q = fi.read().split()
++        if len(q) < 2 or q[1].lstrip("*") != "vmlinux-0.22.bin":
++            errs.append("BUILD/IMAGE.sha256 does not name vmlinux-0.22.bin")
++        if image_sha.lower() != expect.lower():
++            errs.append("BUILD belongs to image sha256 %s, not the released image %s (G3 R3)" % (image_sha, expect))
++    note = "SHA256SUMS verifies %d files" % len(listed) if listed and not errs else ""
++    return expect, errs, note
++
++
+ def main(argv=None):
+     ap = argparse.ArgumentParser(description="PSC decoder (DESIGN 10)")
+     ap.add_argument("inputs", nargs="*")
+@@ -219,6 +264,9 @@ def main(argv=None):
+     ap.add_argument("--times")
+     ap.add_argument("--panel", action="append", default=[])
+     ap.add_argument("--no-template", action="store_true")
++    ap.add_argument("--expect-image", default=A.RELEASE_IMAGE_SHA256,
++                    help="sha256 of the vmlinux-0.22.bin the BUILD directory must belong to (10.1, K3); default "
++                         "the released image of the G3 R3 record; 'any' disables the check (printed in REPORT)")
+     a = ap.parse_args(argv)
+ 
+     files = []
+@@ -242,6 +290,7 @@ def main(argv=None):
+             image_sha = fi.read().split()[0]
+     build = A.BuildInfo.load(pick("System.map", a.system_map), pick("epcmap.txt", a.epcmap),
+                              pick("regmap.txt", a.regmap), build_id, image_sha)
++    build.image_expect, build.image_errors, build.sums_note = image_identity(bd, image_sha, a.expect_image)
+     times = parse_times(a.times) if a.times else {}
+     os.makedirs(a.out, exist_ok=True)
+ 
+@@ -275,7 +324,9 @@ def main(argv=None):
+           "state": (pr["stopped"] or pr["state"]) if pr else [], "triggers": pr["triggers"] if pr else [],
+           "h8": pr["h8"] if pr else [], "h7_stage": pr["h7"] if pr else [],
+           "onset": {"cand": pr["cand"], "tick": pr["tick"]} if pr else None,
+-          "flags": m.flags, "template": tmpl.ok, "epc_ok": m.epc_ok, "conflicts": len(col.conflicts),
++          "flags": m.flags, "template": tmpl.ok, "epc_ok": m.epc_ok, "epc_reason": m.epc_reason,
++          "image_expect": m.build.image_expect, "image_errors": m.build.image_errors,
++          "conflicts": len(col.conflicts),
+           "records": {F.RING_NAMES[r]: len(col.records[r]) for r in range(F.NRINGS)},
+           "other_boot_chunks": len(col.other_boot), "above_extent": len(col.above_extent),
+           "unverified": len(col.unverified), "only_in_image": len(col.only_in_image),
+@@ -462,6 +513,10 @@ def _report(a, col, m, an, final, times):
+                                       "guard violation at tick %s (after this onset)" % an.guard["suspect_from"]))
+         if m.flags:
+             w("- flags: %s" % ", ".join(m.flags))
++        fl = an.flagged_in_window(pr["t"])          # A-5 (DESIGN 18)
++        if fl:
++            w("- `nwords` 7 or 8 live in the classification window: %s (every rule read them as {7, 8})"
++              % ", ".join("cmd 0x%02x %s: %d" % (c, o, k) for (c, o), k in sorted(fl.items())))
+         w("")
+         w("### Evidence\n")
+         for k, v in pr["evidence"].items():
+@@ -529,6 +584,10 @@ def _report(a, col, m, an, final, times):
+         ss = [s for s in m.S if abs(s["_t0"] - r["t"]) <= A.S_NEAR_MS * TPS * CPT // 1000]
+         w("- S records within +-%d ms: %d%s" % (A.S_NEAR_MS, len(ss), (" (seq %s)" % [s["seq"] for s in ss[:10]])
+                                                if ss else ""))
++        fl = an.flagged_in_window(r["t"])          # A-5 (DESIGN 18)
++        if fl:
++            w("- **`nwords` 7 or 8: the ambiguity is live in this window**: %s flagged nw7or8 (read as {7, 8} by "
++              "every rule, section 17 R-1)" % ", ".join("cmd 0x%02x %s: %d" % (c, o, k) for (c, o), k in sorted(fl.items())))
+         w("- raw dump: `window_%s.txt`\n" % r["cand"].replace("+", "_"))
+     w("## Template (10.7 step 2)\n")
+     if tmpl.ok:
+@@ -555,6 +614,12 @@ def _report(a, col, m, an, final, times):
+     if m.build.image_sha256:
+         w("- BUILD directory belongs to image sha256 %s (compare with the G3 R3 record in gates/LOG.md)"
+           % m.build.image_sha256)
++    if m.build.image_expect:
++        w("- image identity (K3): expected %s; %s" % (m.build.image_expect, "; ".join(m.build.image_errors)
++                                                       if m.build.image_errors else
++                                                       "MATCH (%s)" % (m.build.sums_note or "")))
++    elif getattr(m.build, "sums_note", ""):
++        w("- %s" % m.build.sums_note)
+     for n in m.build.notes:
+         w("- %s" % n)
+     w("\n## `nwords` 7 or 8 (section 17 R-1)\n")
+@@ -574,15 +639,15 @@ def _report(a, col, m, an, final, times):
+       % {k: tuple(v) for k, v in per.items()} if per else "- no Nop straddled a thread command")
+     hi = sum(1 for r in m.P if an.suspension(r) and A.step_num(an.suspension(r)[0]) >= 13 and r["ms_delta"] > 0)
+     w("- LED operations during a thread suspension in the G3-high window (S13..S20): %d commands" % hi)
+-    gaps = []
+-    for p in m.POLL:
+-        a33, a08 = p.get("_p33"), p.get("_p08")
+-        if a33 is not None and a08 is not None:
+-            gaps.append(a08["_t0"] - a33["_t1"])
+-    if gaps:
+-        gaps.sort()
+-        w("- G3-low gap (0x33 end to 0x08 start), median %.2f us, min %.2f us (n %d)"
+-          % (gaps[len(gaps) // 2] / (CPT / 4000.0), gaps[0] / (CPT / 4000.0), len(gaps)))
++    glines, _summ = an.g3_gap()                     # K5 (DESIGN 18)
++    for l in glines:
++        w("- %s" % l)
++    elines, _c, _n = an.edge_windows()               # K6
++    for l in elines:
++        w("- %s" % l)
++    slines, _fl = an.stack_headroom()                # K8
++    for l in slines:
++        w("- %s" % l)
+     kt = sorted(set(s["kupd_last_tick"] for s in m.stats if s["kupd_last_tick"]))
+     if kt:
+         w("- pdflush wb_kupdate phase (tick mod 1250) of %d observed runs: %s"
+diff --git a/psc-tools/decoder/pscdec_analysis.py b/psc-tools/decoder/pscdec_analysis.py
+index b4008718..a44ec923 100644
+--- a/psc-tools/decoder/pscdec_analysis.py
++++ b/psc-tools/decoder/pscdec_analysis.py
+@@ -5,6 +5,9 @@ reconstruction, 10.6 EPC/register maps, 10.7 steps 1-8 (template, per-poll
+ simulation, onset candidates with the 6.3 placements, classification by every
+ row of section 6 / 6.1, H10 conclusion, harm-rate comparison, no-death
+ inference).  Thresholds are module constants, fixed before the run (G3 R6).
++Stage 3 closure (DESIGN 18): the image-identity check (K3), the G3-low gap,
++tick-edge and stack-headroom printouts (K5, K6, K8), the per-window
++nw7or8 note (A-5) and the 7|8 evidence text (G2 attempt 2 N3).
+ """
+ 
+ import bisect
+@@ -24,6 +27,12 @@ def nwset(r):
+         return (7, 8)
+     return (r["nwords"],)
+ 
++
++def nwtext(r):
++    """nwords as evidence text: '7|8' for a record flagged nw7or8 (G2 attempt 2
++    N3; the timeline already prints it so, pscdec.py rec_line)."""
++    return "7|8" if r.get("nw7or8") else str(r["nwords"])
++
+ CPT = F.CPT
+ TPS = F.HZ                          # ticks per second
+ WD = F.WD_CYCLE
+@@ -48,6 +57,41 @@ H4_SUFF_N = 30                      # 10.7 step 8
+ H4_SUFF_P = 0.1
+ FISHER_P, FISHER_MIN_HL = 0.01, 3   # 10.7 step 7
+ 
++# ---- Stage 3 closure (DESIGN 18), pre-registered before the run (G3 R6).
++# The released image (gates/LOG.md, G2 attempt 2: the G3 R3 record). 10.1, K3:
++# the EPC analysis is refused unless BUILD/IMAGE.sha256 names this image and
++# BUILD/SHA256SUMS verifies (pscdec.py --expect-image overrides, for tests).
++RELEASE_IMAGE_SHA256 = "4f9b69dcc72cb8e61322311fa4aabde5ea6f65fe3fc1158089af19161c51cac8"
++# Executed-instruction counts of the RELEASE build at 1 instruction per Count
++# (handoff/stage3/measure/measure-output.json; Count at the core clock and
++# 1 IPC are UNVERIFIED, DESIGN 5.4).  K5: the G3-low gap is the 0x33's S20
++# store to the 0x08's S13 store.
++COUNT_HZ = 220912896
++G3GAP_OUT_INSTR = 399        # gap instructions outside the recorded c_out(0x33)..c_in(0x08) (157 + 242)
++G3GAP_MMIO = 10              # MMIO accesses in the gap (0x08: S5..S12), latency m each
++G3GAP_ADDED_INSTR = 566      # instrumentation's instructions in the gap (+485, +6, +75; base 252, new 818)
++P33_COST_INSTR = 312         # instructions inside the 0x33's p_rec_cost window (c_out .. its cost read)
++G3GAP_HINT_US = 5.0          # the commented-out wait after GPIO3 falls (syscon.c:95-97, :142-144)
++# m upper bound (K5): instructions and MMIO accesses from c_in to c_out of a
++# clean P record (ret > 0, no retry, drain 0, dtick 0, wn 0, not preempted):
++# I = I0[cmd] + 11 ack_polls + 15 nwords + 5 rx[1];  N = 16 + ack_polls + 2 nwords
++# (15 + ... for 8 words), fitted exactly on 9 points per command.
++CMD_I0 = {0x08: 404, 0x33: 410}
++# K6: start-phase shift of each thread window against the tick it woke on
++# (tick hook 48, wake-up hook 109, switch-in hook 203, poll_begin 95, loop
++# top 7, inline hook code ~16, entry 75; the 0x08 adds the G3-low 566), and
++# the S5 / S20 positions relative to the recorded c_in / c_out.
++DELTA_START = {0x33: 553, 0x08: 1119}          # Counts (~2.5 us, ~5.1 us)
++DELTA_RESUME = 1104                            # a thread resumed after a Nop (~5.0 us)
++CIN_TO_S5 = {0x08: 200, 0x33: 206}
++S20_BEFORE_COUT = {0x08: 188, 0x33: 158}
++# K8: stack headroom at a Nop (thread_info 52 B = TI_REGS 48 + 4, pt_regs 176,
++# the Nop path's 344 B below pt_regs, include/asm-mips/asm-offsets.h; 8 KB
++# stacks; a user-mode interruption runs the Nop on the kernel stack top).
++THREAD_SIZE, TI_SIZE, PT_SIZE, NOP_DEPTH = 8192, 52, 176, 344
++STACK_TOP_RESERVE = 32
++HEADROOM_FLAG = 1024
++
+ KEY_HOLD = 0x00002000
+ KEY_SELECT, KEY_LTRG, KEY_RTRG = 0x00000100, 0x00000200, 0x00000400
+ KEY_UP, KEY_RT, KEY_DN, KEY_LT = 0x1, 0x2, 0x4, 0x8
+@@ -129,6 +173,8 @@ class BuildInfo(object):
+         self.reg = {}           # label -> var -> [psc_maps.RegRow]
+         self.build_id = None
+         self.image_sha256 = None
++        self.image_expect = None    # the image hash the BUILD must belong to (K3), None = not checked
++        self.image_errors = []      # identity failures (K3): refuse the EPC analysis
+         self.notes = []
+         self.errors = []
+ 
+@@ -433,7 +479,7 @@ class Model(object):
+             elif c != st["build_id"]:
+                 self.build.notes.append("10.1: %s FILEHDR /proc/version CRC-32 0x%08x != stats word 2 0x%08x"
+                                         % (name, c, st["build_id"]))
+-        why = list(self.build.errors)
++        why = list(self.build.errors) + list(self.build.image_errors)
+         if not self.build.sysmap:
+             why.append("no System.map")
+         else:
+@@ -1257,8 +1303,8 @@ class Analysis(object):
+         for w in near_wt:
+             st = m.w_step(w) if w["ext"]["t_busy"] & F.TBUSY_P else None
+             thr = m.Pseq.get(w["ext"]["p_head"]) if w["ext"]["t_busy"] & F.TBUSY_P else None
+-            listing.append("WT seq %d tick %d: t_busy %d, own ret %d nwords %d rx[2] 0x%02x (%s)%s%s"
+-                           % (w["seq"], w["tick_in"], w["ext"]["t_busy"], w["ret"], w["nwords"], w["rx"][2],
++            listing.append("WT seq %d tick %d: t_busy %d, own ret %d nwords %s rx[2] 0x%02x (%s)%s%s"
++                           % (w["seq"], w["tick_in"], w["ext"]["t_busy"], w["ret"], nwtext(w), w["rx"][2],
+                               "valid" if tmpl.own_valid(w) else "NOT a valid Nop reply",
+                               "; straddled P seq %d step %s %s, thread ret %d (%s)"
+                               % (thr["seq"], st["label"], st["ppoint"], thr["ret"],
+@@ -1282,14 +1328,14 @@ class Analysis(object):
+                     cc = self.crosscheck(st["ppoint"], thr, tmpl, st)
+                     res["triggers"].append("H4")
+                     ev["H4"].append("WT seq %d at tick %d (wdph 0) with t_busy b0, W.p_head = P seq %d (wn %d); "
+-                                    "step from %s 0x%08x = %s -> %s%s%s; Nop's own ret %d nwords %d ack_polls %d "
+-                                    "drain %d drain_last 0x%04x rx %s; thread result ret %d nwords %d rx %s: %s"
++                                    "step from %s 0x%08x = %s -> %s%s%s; Nop's own ret %d nwords %s ack_polls %d "
++                                    "drain %d drain_last 0x%04x rx %s; thread result ret %d nwords %s rx %s: %s"
+                                     % (w["seq"], w["tick_in"], thr["seq"], thr["wn"], st["src"],
+                                        st["epc"] or 0, st["label"], st["ppoint"],
+                                        " (EPC or its delay slot)" if st["bd"] else "",
+                                        kj_text(st),
+-                                       w["ret"], w["nwords"], w["ack_polls"], w["drain"], w["drain_last"],
+-                                       hexrx(w["rx"]), thr["ret"], thr["nwords"], hexrx(thr["rx"]), cc))
++                                       w["ret"], nwtext(w), w["ack_polls"], w["drain"], w["drain_last"],
++                                       hexrx(w["rx"]), thr["ret"], nwtext(thr), hexrx(thr["rx"]), cc))
+                     if st.get("map_note"):
+                         ev["H4"].append(st["map_note"])
+                     if thr["wn"] < 1:
+@@ -1312,8 +1358,8 @@ class Analysis(object):
+                 if not (w["ext"]["t_busy"] & F.TBUSY_P) and not between and "H4" not in res["triggers"]:
+                     res["triggers"].append("WB")
+                     ev["WB"].append("first failed P seq %d is the first command after WT seq %d (tick %d, t_busy 0); "
+-                                    "the Nop's own ret %d nwords %d rx %s ack_polls %d drain %d: %s"
+-                                    % (Fc["seq"], w["seq"], w["tick_in"], w["ret"], w["nwords"], hexrx(w["rx"]),
++                                    "the Nop's own ret %d nwords %s rx %s ack_polls %d drain %d: %s"
++                                    % (Fc["seq"], w["seq"], w["tick_in"], w["ret"], nwtext(w), hexrx(w["rx"]),
+                                        w["ack_polls"], w["drain"],
+                                        "valid Nop reply" if tmpl.own_valid(w) else "NOT a valid Nop reply"))
+         # H10 / N1m / N1 / N1p on the onset command and the two before it
+@@ -1558,7 +1604,187 @@ class Analysis(object):
+         pre = [r for r in m.P if r["pre_flags"] & F.PRE_F_VALID]
+         exp2 = ("in-flight preempted time by holder class: %s" %
+                 dict(Counter((F.CLASS_NAMES[F.pre_cls_last(r["pre_cls"]) & 7]) for r in pre)))
+-        return lines, verdict, [exp, exp2]
++        # K5: the one direction in which the instrumentation could hide a failure (7.3)
++        glines, summ = self.g3_gap()
++        exp3 = ["the one masking direction (7.3, K5): the instrumentation lengthens the 0x33 -> 0x08 G3-low gap; "
++                + ("%.1f us lies between the baseline-equivalent and the instrumented gap at %s, so a syscon minimum "
++                   "there could have been masked" % (G3GAP_HINT_US, ", ".join(k for k in ("min", "p1", "median")
++                                                                              if summ[k][4]))
++                   if summ and any(summ[k][4] for k in summ) else
++                   "%.1f us is not crossed at the min, 1st percentile or median gap" % G3GAP_HINT_US
++                   if summ else "no gap measured")] + glines
++        return lines, verdict, [exp, exp2] + exp3
++
++    # ---------------------------------------------------------------- Stage 3 closure printouts
++    def flagged_in_window(self, t_on):
++        """A-5: records flagged nw7or8 inside a candidate's raw window
++        (onset - RAW_BEFORE_S .. onset + RAW_AFTER_S), per (cmd, origin)."""
++        m = self.m
++        lo, hi = t_on - RAW_BEFORE_S * TPS * CPT, t_on + RAW_AFTER_S * TPS * CPT
++        cnt = Counter()
++        for r in m.P + m.W + m.M:
++            if r.get("nw7or8") and lo <= r["_t0"] <= hi:
++                cnt[(r["cmd"], F.ORIGIN_NAMES[r["ctx"] & 3])] += 1
++        return dict(cnt)
++
++    def mmio_bound(self):
++        """K5: an upper bound of the uncached MMIO latency m from the clean P
++        records: m <= (c_out - c_in - I) / N (Counts), with I and N the
++        executed instructions and MMIO accesses of that record's path (lower
++        bounds, so the bound stays an upper bound; cache misses only raise it).
++        Returns (m_counts or None, n_records, the record that gives it)."""
++        best, n, arg = None, 0, None
++        for r in self.m.P:
++            cmd = r["cmd"]
++            if cmd not in CMD_I0 or r["ret"] <= 0 or r["retries"] or r["drain"] or r["dtick"] or r["wn"] or \
++                    r["preempt_delta"] or r["lc_n"] or r["ack_polls"] >= 1000000:
++                continue
++            nw = 7 if r.get("nw7or8") else r["nwords"]
++            if nw < 1:
++                continue
++            i = CMD_I0[cmd] + 11 * r["ack_polls"] + 15 * nw + 5 * r["rx"][1]
++            k = 16 + r["ack_polls"] + 2 * nw - (1 if nw >= 8 else 0)
++            dur = r["c_out"] - r["c_in"]
++            n += 1
++            v = (dur - i) / float(k)
++            if best is None or v < best:
++                best, arg = v, r
++        return best, n, arg
++
++    def g3_gap(self):
++        """K5 (10.7 steps 6 and 8): the recorded 0x33 -> 0x08 gap g (c_out of
++        the 0x33 to c_in of the 0x08), its distribution, and the G3-low gap
++        (S20 -> S13) with and without the instrumentation, for m in [0, m_ub].
++        Returns (lines, summary or None)."""
++        m = self.m
++        gs = []
++        for p in m.POLL:
++            a33, a08 = p.get("_p33"), p.get("_p08")
++            if a33 is not None and a08 is not None and a08["_t0"] > a33["_t1"]:
++                gs.append(a08["_t0"] - a33["_t1"])
++        us = lambda c: c * 1e6 / COUNT_HZ
++        if not gs:
++            return ["G3-low gap: no POLL with both commands"], None
++        gs.sort()
++        q = {"min": gs[0], "p1": gs[int(0.01 * (len(gs) - 1))], "median": gs[len(gs) // 2]}
++        st = m.stats[-1] if m.stats else None
++        cost_last = st["p_rec_cost_last"] if st else P33_COST_INSTR
++        cost_max = st["p_rec_cost_max"] if st else P33_COST_INSTR
++        mub, nmub, rarg = self.mmio_bound()
++        mub_c = max(0.0, mub) if mub is not None else None
++        lines = ["G3-low gap (K5): recorded g = c_in(0x08) - c_out(0x33) over %d polls: min %.2f us, 1st percentile "
++                 "%.2f us, median %.2f us" % (len(gs), us(q["min"]), us(q["p1"]), us(q["median"]))]
++        if mub_c is None:
++            lines.append("MMIO latency bound: no clean P record (ret > 0, no retry, drain 0, dtick 0, wn 0, not "
++                         "preempted); m unbounded, the gap is given for m = 0 only")
++        else:
++            lines.append("MMIO latency bound from the shortest clean command: m <= %.0f ns (%d records; P seq %d "
++                         "cmd 0x%02x, c_out - c_in %d Counts, ack_polls %d, nwords %s)"
++                         % (us(mub_c) * 1000, nmub, rarg["seq"], rarg["cmd"], rarg["c_out"] - rarg["c_in"],
++                            rarg["ack_polls"], nwtext(rarg)))
++        excess = max(0, cost_last - P33_COST_INSTR)
++        summ = {}
++        for k in ("min", "p1", "median"):
++            g = q[k]
++            new_lo = g + G3GAP_OUT_INSTR
++            new_hi = new_lo + G3GAP_MMIO * (mub_c or 0)
++            base_lo = new_lo - G3GAP_ADDED_INSTR - excess
++            base_hi = new_hi - G3GAP_ADDED_INSTR - excess
++            cross = us(base_lo) < G3GAP_HINT_US <= us(new_hi)
++            summ[k] = (us(base_lo), us(base_hi), us(new_lo), us(new_hi), cross)
++            lines.append("G3-low gap S20 -> S13 at the %s g: instrumented %.2f-%.2f us, baseline equivalent %.2f-%.2f "
++                         "us (minus %d instructions and the p_rec_cost excess %d Counts); %.1f us %s"
++                         % (k, us(new_lo), us(new_hi), us(base_lo), us(base_hi), G3GAP_ADDED_INSTR, excess,
++                            G3GAP_HINT_US, "lies between the two: the instrumentation could have moved this gap "
++                            "across it (the one masking direction, 7.3)" if cross else "is not crossed"))
++        lines.append("p_rec_cost last %d, max %d Counts (%d of them instructions on the cached path); constants: %d "
++                     "instructions outside g, %d MMIO, %d instructions added (stage3/measure, 1 IPC UNVERIFIED)"
++                     % (cost_last, cost_max, P33_COST_INSTR, G3GAP_OUT_INSTR, G3GAP_MMIO, G3GAP_ADDED_INSTR))
++        return lines, summ
++
++    def edge_windows(self):
++        """K6 (10.7 step 6): thread windows S5..S20 near a tick edge, with the
++        start-phase shift delta of each command (DELTA_START): a window
++        starting within delta after an edge could have straddled it without
++        the instrumentation (a straddle removed); a window ending within delta
++        after an edge could have ended before it (a straddle created).  Counted
++        for every tick edge (the density) and for watchdog edges (1250k)."""
++        m = self.m
++        c = Counter()
++        n = Counter()
++        for r in m.P:
++            cmd = r["cmd"]
++            if cmd not in DELTA_START:
++                continue
++            d = DELTA_START[cmd]
++            n[cmd] += 1
++            s5 = r["c_in"] + CIN_TO_S5[cmd]
++            s5_tick = r["tick_in"] + (1 if s5 >= CPT else 0)
++            s5 = s5 - CPT if s5 >= CPT else s5
++            s20 = r["c_out"] - S20_BEFORE_COUT[cmd]
++            s20_tick = r["tick_in"] + r["dtick"] - (1 if s20 < 0 else 0)
++            s20 = s20 + CPT if s20 < 0 else s20
++            if s5 < d:
++                c[(cmd, "start after edge")] += 1
++                if s5_tick % WD == 0:
++                    c[(cmd, "start after watchdog edge")] += 1
++            if s5 > CPT - d:
++                c[(cmd, "start before edge")] += 1
++            if s20 < d:
++                c[(cmd, "end after edge")] += 1
++                if s20_tick % WD == 0:
++                    c[(cmd, "end after watchdog edge")] += 1
++            if s20 > CPT - d:
++                c[(cmd, "end before edge")] += 1
++        lines = []
++        for cmd in sorted(n):
++            d = DELTA_START[cmd]
++            lines.append("cmd 0x%02x, delta %.2f us: of %d windows, %d start and %d end within delta after a tick edge "
++                         "(%d, %d at a watchdog edge: straddles the shift could have removed / created), %d start and "
++                         "%d end within delta before one; density %.4f %%"
++                         % (cmd, d * 1e6 / COUNT_HZ, n[cmd], c[(cmd, "start after edge")], c[(cmd, "end after edge")],
++                            c[(cmd, "start after watchdog edge")], c[(cmd, "end after watchdog edge")],
++                            c[(cmd, "start before edge")], c[(cmd, "end before edge")],
++                            100.0 * (c[(cmd, "start after edge")] + c[(cmd, "end after edge")]) / max(1, n[cmd])))
++            lines[-1] = lines[-1].replace("density", "fraction of windows within delta after an edge")
++        lines.append("a thread command resumed after a Nop resumes %.2f us later (DELTA_RESUME); 7.3's bound is "
++                     "delta x the largest start-phase density, the counts above give that density"
++                     % (DELTA_RESUME * 1e6 / COUNT_HZ))
++        return lines, c, n
++
++    def stack_headroom(self):
++        """K8 (10.7 step 6): stack headroom at each Nop from the W record's
++        interrupted sp: kernel mode (ext_flags KMODE) = sp - stack base - 52, and
++        that minus the Nop path's 176 + 344 B; user mode: the Nop runs on the
++        kernel stack top (8192 - 32 - 52 - 520 B)."""
++        km, um, flagged = [], 0, []
++        for w in self.m.WT:
++            e = w.get("ext") or {}
++            if not (e.get("ext_flags", 0) & F.EXT_F_REGS_VALID):
++                continue
++            if e["ext_flags"] & F.EXT_F_KMODE:
++                # sp - (its 8 KB stack's base) - sizeof(thread_info); a sp exactly on a block
++                # boundary is the top of the block below (an empty stack), hence sp - 1
++                raw = e["sp"] - ((e["sp"] - 1) & ~(THREAD_SIZE - 1)) - TI_SIZE
++                after = raw - PT_SIZE - NOP_DEPTH
++                km.append((after, raw, w["seq"]))
++                if after < HEADROOM_FLAG:
++                    flagged.append(w["seq"])
++            else:
++                um += 1
++        lines = []
++        user_room = THREAD_SIZE - STACK_TOP_RESERVE - TI_SIZE - PT_SIZE - NOP_DEPTH
++        if km:
++            lo = min(km)
++            lines.append("stack headroom at the Nop (K8): %d kernel-mode W records, minimum sp - stack base - 52 = %d B, "
++                         "after the Nop path's %d B: %d B (W seq %d); %d user-mode W records (Nop on the kernel stack "
++                         "top, %d B left)" % (len(km), lo[1], PT_SIZE + NOP_DEPTH, lo[0], lo[2], um, user_room))
++        else:
++            lines.append("stack headroom at the Nop (K8): no kernel-mode W record; %d user-mode (%d B left)"
++                         % (um, user_room))
++        if flagged:
++            lines.append("**STACK HEADROOM BELOW %d B after the Nop path** at W seq %s" % (HEADROOM_FLAG, flagged[:20]))
++        return lines, flagged
+ 
+     # ---------------------------------------------------------------- run everything
+     def run(self):
+diff --git a/psc-tools/decoder/synth.py b/psc-tools/decoder/synth.py
+index bef00621..aeff4bda 100644
+--- a/psc-tools/decoder/synth.py
++++ b/psc-tools/decoder/synth.py
+@@ -19,6 +19,7 @@ chunk ledger for the truncation test) and, with --image, stick.img.
+ 
+ import argparse
+ import json
++import hashlib
+ import os
+ import random
+ import struct
+@@ -76,6 +77,25 @@ def write_build(d):
+                 "LEDRMW   loaded     r[0]        0 -\n")
+     with open(os.path.join(d, "build_id.txt"), "w") as f:
+         f.write("0x%08x\n" % BUILD_ID)
++    write_sums(d)
++
++
++# the synthetic image's sha256 (10.1, K3): the tests decode with --expect-image SYNTH_IMAGE_SHA256
++SYNTH_IMAGE_SHA256 = hashlib.sha256(b"psc synth image").hexdigest()
++
++
++def write_sums(d, image_sha=None):
++    """IMAGE.sha256 and SHA256SUMS of a BUILD directory, as mkmaps.py writes them."""
++    with open(os.path.join(d, "IMAGE.sha256"), "w") as f:
++        f.write("%s  vmlinux-0.22.bin\n" % (image_sha or SYNTH_IMAGE_SHA256))
++    lines = []
++    for name in sorted(os.listdir(d)):
++        if name == "SHA256SUMS" or not os.path.isfile(os.path.join(d, name)):
++            continue
++        with open(os.path.join(d, name), "rb") as f:
++            lines.append("%s  %s\n" % (hashlib.sha256(f.read()).hexdigest(), name))
++    with open(os.path.join(d, "SHA256SUMS"), "w") as f:
++        f.writelines(lines)
+ 
+ 
+ # ----------------------------------------------------------------- packing
+@@ -186,8 +206,9 @@ def conv(v):
+ # ----------------------------------------------------------------- the run
+ class Synth(object):
+     def __init__(self, shape, seed=1, run_no=1, nonce=0x1234ABCD, rx2alt=False, duration_cap=None,
+-                 flush_fail=False):
++                 flush_fail=False, nop7=False):
+         self.shape = shape
++        self.nop7 = nop7        # Stage 3 (N3, A-5): a straddling Nop's own reply is 7 words, flagged nw7or8
+         self.rng = random.Random(seed)
+         self.run_no, self.nonce = run_no, nonce
+         self.codes = ({0x08: 0x28, 0x33: 0x53, 0x00: 0x20, 0x34: 0x54} if rx2alt else
+@@ -447,6 +468,10 @@ class Synth(object):
+                            t_entry_tick=busy["tick_in"], t_entry_c=busy["c_in"])
+                 ext["r"][F.REGS_ORDER.index(8)] = 4
+                 w["ack_polls"] = 60
++                if self.nop7:
++                    body = bytes([0x24, 13, 0x00]) + bytes(range(1, 11))
++                    rx7 = body + bytes([(~sum(body)) & 0xFF])
++                    w.update(rx=rx7.ljust(16, b"\xff"), nwords=7, ret=rx7[0])
+                 busy["wn"] = min(255, busy["wn"] + 1)
+                 busy["_wseq"] = k
+             self.W.append((w, ext))
+diff --git a/psc-tools/decoder/test/run_tests.py b/psc-tools/decoder/test/run_tests.py
+index 1b95d3a8..9ec07a0f 100644
+--- a/psc-tools/decoder/test/run_tests.py
++++ b/psc-tools/decoder/test/run_tests.py
+@@ -7,6 +7,7 @@ layer.  Run:  python3 test/run_tests.py  (output also saved to TESTS.txt by
+ the caller).
+ """
+ 
++import hashlib
+ import json
+ import os
+ import random
+@@ -66,7 +67,8 @@ def decode(d, outname="dec", extra=(), inputs=None, times=True, build=True):
+         shutil.rmtree(out)
+     cmd = [sys.executable, os.path.join(DEC, "pscdec.py"), "-o", out]
+     if build:
+-        cmd += ["--build", os.path.join(d, "build")]
++        # the synthetic BUILD belongs to the synthetic image (10.1, K3: Stage 3 closure)
++        cmd += ["--build", os.path.join(d, "build"), "--expect-image", synth.SYNTH_IMAGE_SHA256]
+     if times:
+         cmd += ["--times", os.path.join(d, "times.txt")]
+     cmd += list(extra)
+@@ -700,6 +702,16 @@ class NwordsSevenOrEight(unittest.TestCase):
+         say("    7 words / 8 ending 0xFFFF: same bytes, nwords 7 flagged {7, 8}; 8 not ending 0xFFFF: 8 exact; "
+             "set membership against template and code expectation")
+ 
++    def test_evidence_text(self):
++        """G2 attempt 2 N3: the H4/WB/WT evidence lines print a flagged record as 7|8
++        (end to end: Stage3Closure.test_n3_a5_evidence_prints_7or8)."""
++        w7 = [0x080E, 0x0800, 0x0000, 0x0000, 0x8080, 0x0000, 0x0012]
++        self.assertEqual(A.nwtext(self.rec(w7)), "7|8")
++        self.assertEqual(A.nwtext(self.rec(w7 + [0xFFFF])), "7|8")
++        self.assertEqual(A.nwtext(self.rec(w7 + [0x34A5])), "8")
++        self.assertEqual(A.nwtext(self.rec(w7[:6])), "6")
++        say("    evidence text: 7 words and 8 ending 0xFFFF print 7|8, exact counts print the number (N3)")
++
+     def test_report_counts(self):
+         d = gen("H1", "H1", seed=11)
+         rc, so, js, out = decode(d, "dec_nw")
+@@ -730,7 +742,9 @@ class BuildCheck(unittest.TestCase):
+         shutil.copytree(os.path.join(d, "build"), bd2)
+         other = zlib.crc32(synth.SYNTH_BANNER.replace(b"synth", b"synth rebuild")) & 0xFFFFFFFF
+         wr(os.path.join(bd2, "build_id.txt"), b"0x%08x\n" % other)
+-        rc, so, js, out = decode(d, "dec_bid_bad", extra=["--build", bd2], build=False)
++        synth.write_sums(bd2)                  # a consistent BUILD of the same (synthetic) image
++        rc, so, js, out = decode(d, "dec_bid_bad", extra=["--build", bd2, "--expect-image", synth.SYNTH_IMAGE_SHA256],
++                                 build=False)
+         self.assertEqual(rc, 0, so)
+         rep = rd(os.path.join(out, "REPORT.md"))
+         self.assertIn("EPC analysis REFUSED", rep)
+@@ -759,6 +773,154 @@ class BuildCheck(unittest.TestCase):
+         say("    a FILEHDR whose /proc/version CRC-32 differs from stats word 2 is reported (10.1)")
+ 
+ 
++class Stage3Closure(unittest.TestCase):
++    """Stage 3 closure (DESIGN 18): G2 attempt 2 N3 (7|8 in the evidence
++    lines), red team K3 (image identity), K5 (G3-low gap and the MMIO bound),
++    K6 (windows near a tick edge), K8 (stack headroom), review A-5 (the
++    ambiguity per classification window)."""
++
++    def test_n3_a5_evidence_prints_7or8(self):
++        d = gen("H4nop7", "H4", seed=11, nop7=True)
++        rc, so, js, out = decode(d, "dec_n3")
++        self.assertEqual(rc, 0, so)
++        self.assertIn("H4", js["triggers"])
++        rep = rd(os.path.join(out, "REPORT.md"))
++        h4 = [l for l in rep.splitlines() if l.startswith("- **H4**:")]
++        self.assertTrue(h4, rep[:2000])
++        self.assertIn("Nop's own ret 36 nwords 7|8", h4[0])
++        self.assertNotIn("nwords 7 ", h4[0])
++        wt = [l for l in rep.splitlines() if l.startswith("- WT seq") and "t_busy 1" in l]
++        self.assertTrue(wt and "nwords 7|8" in wt[0], wt)
++        self.assertIn("`nwords` 7 or 8 live in the classification window", rep)
++        self.assertIn("the ambiguity is live in this window", rep)
++        say("    H4 evidence and the WT listing print 'nwords 7|8' for a flagged Nop reply (N3); the "
++            "classification window says the ambiguity is live (A-5)")
++
++    def test_n3_wb_line(self):
++        r = {"nwords": 7, "nw7or8": 1}
++        self.assertEqual(A.nwtext(r), "7|8")
++        self.assertEqual(A.nwtext({"nwords": 7, "nw7or8": 0}), "7")
++        src = rd(os.path.join(DEC, "pscdec_analysis.py"))
++        wb = src[src.index('ev["WB"].append('):src.index('ev["WB"].append(') + 400]
++        self.assertIn("nwords %s", wb)
++        self.assertIn("nwtext(w)", wb)
++        say("    nwtext: 7|8 when flagged, else the raw value; the WB line uses it")
++
++    def test_k3_image_identity(self):
++        import pscdec
++        rel = os.environ.get("PSC_PACKAGE_BUILD", "/home/ubuntu/psp/work/deploy/uClinux_TRACE/BUILD")
++        if os.path.isdir(rel):
++            img = rd(os.path.join(rel, "IMAGE.sha256")).split()[0]
++            exp, errs, note = pscdec.image_identity(rel, img, A.RELEASE_IMAGE_SHA256)
++            self.assertEqual(errs, [], errs)
++            self.assertEqual(img, A.RELEASE_IMAGE_SHA256)
++            say("    packaged BUILD: IMAGE.sha256 = the released image, %s" % note)
++        d = gen("H4", "H4", seed=11)
++        bd = os.path.join(d, "build")
++        exp, errs, note = pscdec.image_identity(bd, synth.SYNTH_IMAGE_SHA256, A.RELEASE_IMAGE_SHA256)
++        self.assertTrue(any("not the released image" in e for e in errs), errs)
++        exp, errs, note = pscdec.image_identity(bd, synth.SYNTH_IMAGE_SHA256, "any")
++        self.assertEqual((exp, errs), (None, []))
++        self.assertIn("DISABLED", note)
++        # an identity-pinned rebuild of ANOTHER commit: same banner, same build_id, maps of other code,
++        # another image hash -> refused by the image hash although build_id matches (K3, K9)
++        bd2 = os.path.join(d, "build_pinned_other")
++        if os.path.exists(bd2):
++            shutil.rmtree(bd2)
++        shutil.copytree(bd, bd2)
++        other_img = hashlib.sha256(b"identity-pinned rebuild of another commit").hexdigest()
++        synth.write_sums(bd2, other_img)
++        rc, so, js, out = decode(d, "dec_k3", extra=["--build", bd2, "--expect-image", synth.SYNTH_IMAGE_SHA256],
++                                 build=False)
++        self.assertEqual(rc, 0, so)
++        rep = rd(os.path.join(out, "REPORT.md"))
++        self.assertIn("EPC analysis REFUSED", rep)
++        self.assertIn("not the released image", rep)
++        self.assertFalse(js["epc_ok"])
++        self.assertNotIn("!= build", js["epc_reason"])          # build_id itself matched
++        # a BUILD file changed after SHA256SUMS was written -> refused
++        bd3 = os.path.join(d, "build_tampered")
++        if os.path.exists(bd3):
++            shutil.rmtree(bd3)
++        shutil.copytree(bd, bd3)
++        with open(os.path.join(bd3, "regmap.txt"), "a") as f:
++            f.write("# edited\n")
++        exp, errs, note = pscdec.image_identity(bd3, synth.SYNTH_IMAGE_SHA256, synth.SYNTH_IMAGE_SHA256)
++        self.assertTrue(any("regmap.txt does not match" in e for e in errs), errs)
++        # the default (no --expect-image) refuses the synthetic BUILD: the release hash is pinned
++        rc, so, js, out = decode(d, "dec_k3_default", extra=["--build", bd], build=False)
++        self.assertFalse(js["epc_ok"])
++        self.assertIn(A.RELEASE_IMAGE_SHA256, js["epc_reason"])
++        say("    image identity: packaged BUILD accepted; a pinned-identity BUILD of another image refused with "
++            "build_id matching; a tampered BUILD file refused; the default pins the released image")
++
++    def test_k5_k6_k8_report_lines(self):
++        d = gen("healthy", "healthy", seed=11)
++        rc, so, js, out = decode(d, "dec_k568")
++        self.assertEqual(rc, 0, so)
++        rep = rd(os.path.join(out, "REPORT.md"))
++        for need in ("G3-low gap (K5): recorded g", "1st percentile", "baseline equivalent",
++                     "MMIO latency bound", "cmd 0x08, delta", "cmd 0x33, delta", "stack headroom at the Nop (K8)",
++                     "the one masking direction (7.3, K5)"):
++            self.assertIn(need, rep)
++        say("    REPORT step 6 prints K5 (gap min/p1/median, with/without instrumentation, m bound), K6 (edge "
++            "windows), K8 (stack headroom); step 8 names the gap as the one masking direction")
++
++    def _rec(self, **kw):
++        r = dict(cmd=0x08, ret=0x22, retries=0, drain=0, dtick=0, wn=0, preempt_delta=0, lc_n=0, ack_polls=20,
++                 nwords=5, nw7or8=0, rx=bytes([0x22, 9, 8]) + bytes(13), c_in=1000, c_out=1000, tick_in=100,
++                 seq=1, ctx=0)
++        r.update(kw)
++        return r
++
++    def test_k5_mmio_bound_arithmetic(self):
++        class M(object):
++            pass
++        m = M()
++        I = A.CMD_I0[0x08] + 11 * 20 + 15 * 5 + 5 * 9          # the path's instructions (744, as measured)
++        N = 16 + 20 + 2 * 5                                     # its MMIO accesses (46)
++        mm = 33                                                 # 33 Counts per access
++        m.P = [self._rec(c_out=1000 + I + N * mm), self._rec(seq=2, c_out=1000 + I + N * 50),
++               self._rec(seq=3, c_out=1000 + I, retries=1)]      # the retried one is not eligible
++        an = A.Analysis.__new__(A.Analysis)
++        an.m = m
++        best, n, arg = an.mmio_bound()
++        self.assertEqual((round(best, 6), n, arg["seq"]), (mm, 2, 1))
++        self.assertEqual(I, 744)
++        say("    m bound: (c_out - c_in - I) / N with I = 404 + 11 ack + 15 nwords + 5 rx[1], N = 16 + ack + 2 nwords; "
++            "ineligible records skipped")
++
++    def test_k6_k8_counts(self):
++        class M(object):
++            pass
++        m = M()
++        CPT = A.CPT
++        m.P = [self._rec(tick_in=1250, c_in=10, c_out=5000),                     # S5 at 210 < delta: start after edge
++               self._rec(seq=2, tick_in=2499, c_in=CPT - 3000, c_out=100, dtick=1),  # S20 at CPT-88 of 2499: end before
++               self._rec(seq=4, tick_in=3749, c_in=CPT - 3000, c_out=200, dtick=1),  # S20 at 12 of 3750: end after (wd)
++               self._rec(seq=3, tick_in=3000, c_in=500000, c_out=600000)]          # far from both edges
++        an = A.Analysis.__new__(A.Analysis)
++        an.m = m
++        lines, c, n = an.edge_windows()
++        self.assertEqual(c[(0x08, "start after edge")], 1)
++        self.assertEqual(c[(0x08, "start after watchdog edge")], 1)
++        self.assertEqual(c[(0x08, "end before edge")], 1)
++        self.assertEqual((c[(0x08, "end after edge")], c[(0x08, "end after watchdog edge")]), (1, 1))
++        self.assertEqual(n[0x08], 4)
++        m.WT = [dict(seq=1, ext=dict(ext_flags=F.EXT_F_REGS_VALID | F.EXT_F_KMODE, sp=0x81F00000 + 1500)),
++                dict(seq=2, ext=dict(ext_flags=F.EXT_F_REGS_VALID | F.EXT_F_KMODE, sp=0x81F02000 + 7000)),
++                dict(seq=3, ext=dict(ext_flags=F.EXT_F_REGS_VALID, sp=0x40001000))]
++        lines, flagged = an.stack_headroom()
++        self.assertEqual(flagged, [1])                         # 1500 - 52 - 520 = 928 < 1024
++        self.assertIn("minimum sp - stack base - 52 = 1448 B", lines[0])
++        m.WT.append(dict(seq=4, ext=dict(ext_flags=F.EXT_F_REGS_VALID | F.EXT_F_KMODE, sp=0x81F04000)))
++        lines, flagged = an.stack_headroom()                   # sp on a block boundary: an empty stack, 8140 B
++        self.assertEqual(flagged, [1])
++        self.assertIn("1 user-mode", lines[0])
++        say("    K6: windows within delta of a (watchdog) tick edge counted; K8: kernel-mode headroom "
++            "sp - stack base - 52 - 520 flagged below 1 KB, user-mode Nops on the kernel stack top")
++
++
+ if __name__ == "__main__":
+     print("decoder tests; scratch %s" % TMP)
+     r = unittest.main(verbosity=2, exit=False).result
+diff --git a/psc-tools/pscol-test/run.sh b/psc-tools/pscol-test/run.sh
+index 54809327..c9022fae 100755
+--- a/psc-tools/pscol-test/run.sh
++++ b/psc-tools/pscol-test/run.sh
+@@ -3,6 +3,9 @@
+ # simulated kernel/vfat/stick (test/sim.c) and runs every test.
+ # Usage: test/run.sh [all|vectors|hud|nominal|burst|te10|if7b|if4|names|krn|resend] [seeds]
+ #        test/run.sh krn <banner.txt> <build_id>   (KRN against a packaged build, K9)
++# Without a banner, krn and all also run the packaged form against the
++# package's BUILD ($PSC_PACKAGE_BUILD or work/deploy/uClinux_TRACE/BUILD).
++# Every argument is forwarded (Stage 3 closure, G2 attempt 2 verifier advisory 1).
+ set -e
+ cd "$(dirname "$0")"
+ CFLAGS="-O2 -g -Wall -W -Wno-unused-parameter -std=gnu89 -DPSCOL_HOST -m32"
+@@ -10,4 +13,8 @@ if ! echo 'int main(void){return 0;}' | gcc -m32 -x c - -o /tmp/pscol_m32probe 2
+   CFLAGS="${CFLAGS/-m32/}"     # 64-bit host build if no multilib
+ fi
+ gcc $CFLAGS -o pscol_test ../pscol.c sim.c vectors.c -lm
+-./pscol_test "${1:-all}" "${2:-20}"
++if [ "${1:-}" = krn ] && [ $# -eq 2 ]; then
++  echo "usage: test/run.sh krn <banner.txt> <build_id>   (both, or neither)" >&2
++  exit 2
++fi
++./pscol_test "${1:-all}" "${2:-20}" "${@:3}"
+diff --git a/psc-tools/pscol-test/sim.c b/psc-tools/pscol-test/sim.c
+index 10a2251a..3225e057 100644
+--- a/psc-tools/pscol-test/sim.c
++++ b/psc-tools/pscol-test/sim.c
+@@ -1594,6 +1594,44 @@ static int test_names(void)
+ 	return fails;
+ }
+ 
++/* The package's BUILD directory (Stage 3 closure, verifier advisory 1):
++ * $PSC_PACKAGE_BUILD, else work/deploy/uClinux_TRACE/BUILD relative to test/
++ * (where run.sh and checks.sh run the binary), else its absolute path.
++ * Fills the banner.txt path and build_id.txt's first word; 0 if none. */
++static int packaged_build(char *bpath, size_t bn, char *hx, size_t hn)
++{
++	const char *cand[3];
++	int i;
++
++	cand[0] = getenv("PSC_PACKAGE_BUILD");
++	cand[1] = "../../deploy/uClinux_TRACE/BUILD";
++	cand[2] = "/home/ubuntu/psp/work/deploy/uClinux_TRACE/BUILD";
++	for (i = 0; i < 3; i++) {
++		char idp[600];
++		FILE *fb, *fi;
++
++		if (!cand[i])
++			continue;
++		snprintf(bpath, bn, "%s/banner.txt", cand[i]);
++		snprintf(idp, sizeof(idp), "%s/build_id.txt", cand[i]);
++		fb = fopen(bpath, "rb");
++		fi = fopen(idp, "r");
++		if (fb && fi && hn >= 32 && fscanf(fi, "%31s", hx) == 1) {
++			fclose(fb);
++			fclose(fi);
++			printf("  packaged BUILD: %s (build_id.txt %s)\n", cand[i], hx);
++			return 1;
++		}
++		if (fb)
++			fclose(fb);
++		if (fi)
++			fclose(fi);
++	}
++	printf("  packaged BUILD not found ($PSC_PACKAGE_BUILD, ../../deploy/uClinux_TRACE/BUILD): "
++	       "packaged-banner rows NOT RUN\n");
++	return 0;
++}
++
+ /* R-4 / G2 F4: KRN compares stats word 2 with the CRC-32 of /proc/version */
+ static int test_krn(const char *banner_path, const char *want_hex)
+ {
+@@ -1696,8 +1734,23 @@ int main(int argc, char **argv)
+ 	if (!strcmp(w, "all") || !strcmp(w, "if7b")) fails += test_if7b();
+ 	if (!strcmp(w, "all") || !strcmp(w, "if4")) fails += test_if4(nseeds);
+ 	if (!strcmp(w, "all") || !strcmp(w, "names")) fails += test_names();
+-	if (!strcmp(w, "all") || !strcmp(w, "krn"))
+-		fails += test_krn(argc > 3 && !strcmp(w, "krn") ? argv[2] : 0, argc > 3 ? argv[3] : 0);
++	if (!strcmp(w, "all") || !strcmp(w, "krn")) {
++		/* Stage 3 closure (verifier advisory 1, G2 attempt 2): with no banner
++		 * given, the KRN test also runs the packaged form against the
++		 * package's BUILD/banner.txt and build_id.txt, so every caller
++		 * (run.sh, checks.sh) produces the packaged-banner rows. */
++		static char bpath[600], hx[40];
++		const char *bp = 0, *bh = 0;
++
++		if (argc > 3 && !strcmp(w, "krn")) {
++			bp = argv[2];
++			bh = argv[3];
++		} else if (packaged_build(bpath, sizeof(bpath), hx, sizeof(hx))) {
++			bp = bpath;
++			bh = hx;
++		}
++		fails += test_krn(bp, bh);
++	}
+ 	if (!strcmp(w, "all") || !strcmp(w, "resend")) fails += test_resend_lost();
+ 	if (!strcmp(w, "dump")) {		/* dump <dir> <scenario>: files for the decoder cross-check */
+ 		struct cfg c;

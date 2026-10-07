@@ -1,0 +1,109 @@
+#!/bin/bash
+# Stage a PSP/GAME/<name>/ deploy folder for the human to copy to the stick.
+#
+# Written by Recon C, 2026-09-27. INCOMPLETE BY DESIGN: this machine holds
+# no pspboot files (no EBOOT.PBP, no pspboot.conf, no pspboot docs). See
+# /home/ubuntu/psp/handoff/recon/build.md, "Packaging". This script
+# therefore only does what the evidence supports:
+#
+#   * puts the kernel image, under the file name the existing build uses
+#     (vmlinux-0.22.bin), into  work/deploy/<name>/PSP/GAME/<name>/
+#   * writes SHA256SUMS and a PROVENANCE.txt (build out dir, build log path
+#     if found, git commit, tracked changes, kernel banner)
+#   * if, and only if, the human supplies the bootloader files from the
+#     known-good baseline folder via PSPBOOT_DIR, copies them in VERBATIM
+#     (never edits pspboot.conf) and checks that the kernel file name
+#     appears in pspboot.conf.
+#
+# Without PSPBOOT_DIR the folder is marked INCOMPLETE and the script exits 3.
+#
+# Usage:
+#   package.sh <folder-name> <build-out-dir> [taken-name ...]
+#     <folder-name>    new name under PSP/GAME/ (letters, digits, _ and -)
+#     <build-out-dir>  a directory made by build.sh (work/out/<stamp>)
+#     [taken-name]     names already on the stick (baseline, timeout folder;
+#                      dossier Q6). The script refuses a collision.
+#   PSPBOOT_DIR=/path/to/copy/of/baseline/folder package.sh ...
+set -u
+set -o pipefail
+
+WORK=/home/ubuntu/psp/work
+KERNEL_NAME=vmlinux-0.22.bin     # name used by the existing build; see build.md
+
+die() { echo "package.sh: $*" >&2; exit 1; }
+
+[ $# -ge 2 ] || die "usage: $0 <folder-name> <build-out-dir> [taken-name ...]"
+NAME=$1; SRC=$(realpath "$2") || die "no such dir: $2"; shift 2
+
+[[ "$NAME" =~ ^[A-Za-z0-9_-]{1,32}$ ]] || die "folder name must match [A-Za-z0-9_-]{1,32}"
+for t in "$@"; do
+    [ "${NAME,,}" = "${t,,}" ] && die "folder name '$NAME' collides with existing '$t' (case-insensitive, FAT)"
+done
+[ $# -gt 0 ] || echo "package.sh: WARNING: no existing folder names given (dossier Q6 unanswered); collision not checked" >&2
+
+[ -f "$SRC/$KERNEL_NAME" ] || die "$SRC/$KERNEL_NAME missing"
+[ -f "$SRC/SHA256SUMS" ]   || die "$SRC/SHA256SUMS missing (not a build.sh output dir?)"
+(cd "$SRC" && sha256sum -c --quiet SHA256SUMS) || die "checksum mismatch in $SRC"
+
+# Validate the optional bootloader source BEFORE creating anything, so a
+# failure never leaves a half-staged folder behind.
+if [ -n "${PSPBOOT_DIR:-}" ]; then
+    [ -d "$PSPBOOT_DIR" ] || die "PSPBOOT_DIR=$PSPBOOT_DIR is not a directory"
+    [ -f "$PSPBOOT_DIR/EBOOT.PBP" ]    || die "$PSPBOOT_DIR/EBOOT.PBP missing"
+    [ -f "$PSPBOOT_DIR/pspboot.conf" ] || die "$PSPBOOT_DIR/pspboot.conf missing"
+fi
+
+# build.sh names the log and the out dir with the same UTC stamp.
+BUILD_LOG=$WORK/logs/build-$(basename "$SRC").log
+[ -f "$BUILD_LOG" ] || BUILD_LOG="(not found: $BUILD_LOG)"
+
+STAGE=$WORK/deploy/$NAME
+DEST=$STAGE/PSP/GAME/$NAME
+[ -e "$STAGE" ] && die "$STAGE already exists; refusing to overwrite"
+mkdir -p "$DEST" || die "cannot create $DEST"
+# From here on, any failure removes the partial staging dir.
+trap 'rc=$?; if [ $rc != 0 ] && [ $rc != 3 ]; then rm -rf "$STAGE"; echo "package.sh: failed (rc=$rc), removed partial $STAGE" >&2; fi' EXIT
+
+cp -p "$SRC/$KERNEL_NAME" "$DEST/$KERNEL_NAME" || die "copy of kernel failed"
+
+{
+    echo "folder:        PSP/GAME/$NAME"
+    echo "staged:        $(date -u '+%F %T UTC') by package.sh"
+    echo "build out dir: $SRC"
+    echo "build log:     $BUILD_LOG"
+    echo "git commit:    $(cat "$SRC/git-head.txt" 2>/dev/null)"
+    echo "tracked changes at build time:"; sed 's/^/    /' "$SRC/git-status.txt" 2>/dev/null
+    echo "kernel banner: $(cat "$SRC/banner.txt" 2>/dev/null)"
+} > "$STAGE/PROVENANCE.txt"
+
+STATUS=COMPLETE
+if [ -n "${PSPBOOT_DIR:-}" ]; then
+    cp -p "$PSPBOOT_DIR/EBOOT.PBP" "$PSPBOOT_DIR/pspboot.conf" "$DEST/" \
+        || die "copy of pspboot files failed"
+    echo "pspboot files copied verbatim from: $PSPBOOT_DIR" >> "$STAGE/PROVENANCE.txt"
+    if ! grep -q "$KERNEL_NAME" "$DEST/pspboot.conf"; then
+        echo "package.sh: pspboot.conf does not mention $KERNEL_NAME; the human must check the kernel entry" >&2
+        STATUS=INCOMPLETE
+    fi
+else
+    STATUS=INCOMPLETE
+    cat > "$STAGE/INCOMPLETE.txt" <<EOF
+This folder is NOT bootable yet.
+
+Missing, and not present anywhere on the build machine:
+  - EBOOT.PBP     (the pspboot loader)
+  - pspboot.conf  (its configuration; format unknown to the agents)
+
+The human should copy both from the known-good baseline folder on the
+Memory Stick into PSP/GAME/$NAME/, then confirm that the kernel line in
+pspboot.conf names $KERNEL_NAME (and any command line, e.g. osk=..., is
+the same as the baseline's). Or re-run package.sh with
+PSPBOOT_DIR=<copy of the baseline folder>.
+EOF
+fi
+
+(cd "$DEST" && sha256sum * > "$STAGE/SHA256SUMS")
+echo "status: $STATUS" >> "$STAGE/PROVENANCE.txt"
+echo "staged: $STAGE  ($STATUS)"
+cat "$STAGE/SHA256SUMS"
+[ "$STATUS" = COMPLETE ] || exit 3

@@ -1,0 +1,8 @@
+#!/bin/sh
+
+export PS1="[`tty|sed 's,/dev/,,'` \\w]\$ "
+export PATH=.:$PATH
+
+printf "\\033[1;37mWelcome to Jackson's \\033[1;31muC\\033[1;37mlinux environment on PSP.\\033[0m\
+\\033[1;37mPlease visit \\033[1;34mhttp://jacksonm88.googlepages.com/\\033[1;37m for more info.\\033[0m\\n\\n"
+

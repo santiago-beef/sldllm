@@ -1,0 +1,18 @@
+In file included from /work/work/linux/include/linux/stddef.h:4,
+                 from /work/work/linux/include/linux/posix_types.h:4,
+                 from /work/work/linux/include/linux/types.h:14,
+                 from /work/work/linux/include/linux/psc_format.h:30,
+                 from hdr_only.c:1:
+/work/work/linux/include/linux/compiler.h:29:32: warning: ISO C does not permit named variadic macros
+In file included from /work/work/linux/include/linux/posix_types.h:47,
+                 from /work/work/linux/include/linux/types.h:14,
+                 from /work/work/linux/include/linux/psc_format.h:30,
+                 from hdr_only.c:1:
+kinc/asm/posix_types.h:60: warning: ISO C90 does not support 'long long'
+In file included from /work/work/linux/include/linux/types.h:15,
+                 from /work/work/linux/include/linux/psc_format.h:30,
+                 from hdr_only.c:1:
+kinc/asm/types.h:38: warning: ISO C90 does not support 'long long'
+kinc/asm/types.h:39: warning: ISO C90 does not support 'long long'
+kinc/asm/types.h:73: warning: ISO C90 does not support 'long long'
+kinc/asm/types.h:74: warning: ISO C90 does not support 'long long'

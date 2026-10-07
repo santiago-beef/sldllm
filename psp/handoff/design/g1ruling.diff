@@ -1,0 +1,532 @@
+--- DESIGN.r7.md	2026-10-06 04:27:26.010671722 +0000
++++ DESIGN.md	2026-10-06 04:39:10.552490420 +0000
+@@ -19,7 +19,12 @@
+ change, so the **format version is 5**. The operator procedure is
+ [RUNBOOK.md](RUNBOOK.md), regenerated. **Round 7 (closure only):** the text
+ needed to close A6-1 to A6-4 and red-team IF7b and TE10 changed, nothing else;
+-each change is listed in section 16.
++each change is listed in section 16. **Revision 7 (G1 ruling after G2 attempt
++1, 2026-10-06):** only the text of the six items G2 routed back changed (R-1
++`nwords`, R-2 the D10 wording, R-3 the costs outside the window, R-4
++`build_id`, R-5 the memory and image figures, R-6 two stale figures); no
++mechanism, record, field, check or runbook step was added. Each change is
++marked **(§17 R-n)**; section 17 gives the ruling on each.
+ 
+ Inputs: the dossier, WORKFLOW, the four recon reports, the gate log and
+ reports, the candidates. Conventions: kernel paths are relative to
+@@ -40,7 +45,13 @@
+ ## Summary (not a numbered section)
+ 
+ 1. **Nothing is added inside the syscon transaction** (S5 to S20); values the
+-   code already loads into `dmy`, and its spin counters, go to stack slots (7.2).
++   code already loads into `dmy`, and its spin counters, go to stack slots.
++   **(§17 R-2)** The window keeps the baseline's instruction count, its MMIO
++   loads and stores in the same order and form, its loop bodies and branch
++   structure, with no call, global load or base reload. The compiler may move
++   stack slots, rename registers consistently and change an exit branch's delay
++   slot after the exit decision. The test is the criteria of 2.1, not literal
++   identity (7.2).
+ 2. **Records:** an 80-byte SC record per `Syscon_cmd` call in every context
+    (raw `rx_buf`, `ret`, words, retries, captures, entry/exit time, Nops
+    during it, the thread's last interrupted instruction `lc`, the LED
+@@ -66,8 +77,9 @@
+ 6. **The supervisor becomes the worker** if the worker dies or stalls 30 s: no
+    `exec`, no allocation.
+ 7. **Budget (5):** ≈ 7.6 KB/s of records (6.8 MB in 15 min), written once more
+-   as preallocation; ≈ 653 KB of kernel BSS; ≈ 0.8 µs per thread command
+-   outside the window, 0 inside. **Worst-case loss at the pull: 4 s** when the
++   as preallocation; ≈ 653 KB of kernel BSS; **(§17 R-5)** two 256 KB `pscol`
++   blocks, both at boot; **(§17 R-3)** ≈ 2.1-2.8 µs per thread command outside
++   the window (≈ 460-610 instructions, objdump), 0 inside. **Worst-case loss at the pull: 4 s** when the
+    final check passes, else the `DUR` the panel shows. **(r5)** A stick slower
+    than 30 KB/s fails the self-test (no run lost); from 28 KB/s up the model
+    loses nothing under the sporadic error pattern, and at 25 KB/s 1 run in 260
+@@ -87,7 +99,7 @@
+ 
+ | # | Mechanism | For | Cost | Decision |
+ |---|---|---|---|---|
+-| K1 | SC record core: `seq`, (tick, Count) in/out, `cmd`, `txlen`, `ret`, `nwords`, `retries`, `rx[16]` (1.2) | D1, D3, D14, D16; H1-H6 rows; 6.3 | 52 B/record; ≈ 35 instr before S5, ≈ 130 after S20; ≈ 120 LOC with the ring | KEEP |
++| K1 | SC record core: `seq`, (tick, Count) in/out, `cmd`, `txlen`, `ret`, `nwords`, `retries`, `rx[16]` (1.2) | D1, D3, D14, D16; H1-H6 rows; 6.3 | 52 B/record; **(§17 R-3)** ≈ 60 instr before S5, ≈ 400-550 after S20 (objdump, 5.4); ≈ 120 LOC with the ring | KEEP |
+ | K2 | In-window free captures `ack_polls`, `drain`, `drain_last`, `gpio_in`, `spi_st9`, `spi_sttx` (2.1 A3) | D14 (−3/−4 sentinels), H8, H4 P4/P5a split | 12 B; **0 instr in the window** (slot substitution); ≈ 20 LOC | KEEP |
+ | K3 | Explicit watchdog context flag + `ctx` byte (1.8, 2.2) | D8, dossier 9.1, WDOG self-test | 1 B; ≈ 6 instr; ≈ 15 LOC | KEEP |
+ | K4 | `wn`, `w_head_lo` (Nops during this command) | D8, H4, 6.3 | 3 B; ≈ 10 instr | KEEP |
+@@ -129,7 +141,7 @@
+ 
+ | # | Mechanism | For | Cost | Decision |
+ |---|---|---|---|---|
+-| U1 | Supervisor that **becomes the worker** on death, stall or guard exit (4.2) | A1 IF2 (BLIND→closed), A2 OE4, D7 | ≈ 80 LOC; one 128 KB block at boot | KEEP, **changed** |
++| U1 | Supervisor that **becomes the worker** on death, stall or guard exit (4.2) | A1 IF2 (BLIND→closed), A2 OE4, D7 | ≈ 80 LOC; one block of the worker's size at boot (**(§17 R-5)** 256 KB, 5.3) | KEEP, **changed** |
+ | U2 | Pre-spawned standby worker, pipe protocol, standby respawn with `drop_caches`/`buddyinfo` logging | A1 IF2 | a third process (128 KB), ≈ 150 LOC | **CUT** (brief candidate). IF2 was BLIND because a restart needed a large contiguous allocation late in the run. U1 gives the same first recovery with **no** allocation: the supervisor already holds a block of the worker's size (same binary), allocated at boot, and runs the worker loop in-process. The standby design's second recovery needed a 128 KB allocation that could fail (old R28); revision 3 does not attempt one, and in both designs the fallback after that is the kernel panel |
+ | U3 | Capped per-ring drain with the time multiplier `m` and catch-up (4.3); **(r4, A4 IF3)** `head_regress` resync with EVENT and REC red | D4, A1 F2, A4 IF3 | ≈ 65 LOC | KEEP |
+ | U4 | Durable point (`durable_tick`, `durable_next[5]`) reported through `ctl` (4.3, 4.5) | D6 | one 32-byte write per flush | KEEP |
+@@ -233,7 +245,7 @@
+ | 18 | u8 | `cmd` | `tx_buf[0]` |
+ | 19 | u8 | `txlen` | `tx_buf[1]` |
+ | 20 | s16 | `ret` | return value: −5, −4, −3, −2 or 0..255 (recon §1.3; −1 cannot occur) |
+-| 22 | u8 | `nwords` | 16-bit words received in the final attempt, 0..8: `(ptr − rx_buf) / 2`, taken right after S20 (`syscon.c:222`), before `ptr` is reused at `syscon.c:235`. 0 on the −3 and −4 exits |
++| 22 | u8 | `nwords` | 16-bit words received in the final attempt, 0..8; 0 on the −3 and −4 exits. **(§17 R-1)** Derived after S20 from the state the receive loop leaves (2.1 A4), never from code added to the loop. **Exact for 0 to 7 received words; one exception:** when 8 words are received and the 8th is 0xFFFF the record says 7, because the loop leaves the same state after "7 words, then FIFO empty" as after 8 words (`syscon.c:201-217`), and `rx[14..15]` = `ff ff` either way (the prefill, `syscon.c:92-93`). So `nwords` = 7 with `rx[14]` = `rx[15]` = 0xff means **7 or 8**; every other value is exact. The decoder flags the case (10.3), and every rule reads it as the set {7, 8} (10.7, "`nwords` 7 or 8") |
+ | 23 | u8 | `retries` | `retry_cnt` (`syscon.c:72,253`): 0..15, or 16 on −5 |
+ | 24 | u32 | `ack_polls` | `SYSCON_SPIN_MAX − spin_ack` after the ACK loop (`syscon.c:151-156`), final attempt. 0 = latch already set at the first poll; 1,000,001 = the −4 timeout; 0xFFFFFFFF = loop not reached |
+ | 28 | u16 | `drain` | `SYSCON_SPIN_MAX − spin` after the RX pre-drain (`syscon.c:106-117`), saturating; 0xFFFF = −3 |
+@@ -402,7 +414,7 @@
+ 
+ | Words | Content |
+ |---|---|
+-| 0-4 | magic `0x54535350` ('PSST'); `version` (low 16) = **5** (r5), `size` (high 16) = **768**; `build_id`; `hz` = 250; `counts_per_tick` = 883651 |
++| 0-4 | magic `0x54535350` ('PSST'); `version` (low 16) = **5** (r5), `size` (high 16) = **768**; `build_id` (**§17 R-4**: CRC-32/IEEE as zlib `crc32` with initial value 0, of the bytes of `linux_banner` without its terminating NUL, computed once at init. Those bytes equal `/proc/version`: `init/version.c:37-39` against `:41-44` filled by `fs/proc/proc_misc.c:250-253` from `utsname()` sysname, release and version, which are the same compile-time strings, `init/version.c:24-28`, and are only read elsewhere in this tree. The value differs between any two builds, since the banner carries the build time); `hz` = 250; `counts_per_tick` = 883651 |
+ | 5-9 | `last_reader_tick` [R] (ring-file reads only, not `stats`); `initial_jiffies` (`include/linux/jiffies.h:137`); `now_tick`, `now_count`, `now_jiffies` [R] |
+ | 10-13 | `total_counts` low, high; `c_pre_max`; `long_ticks` [W] |
+ | 14-23 | heads P, POLL, W, S, M [R]; `m_dropped` [P]; addresses of `Syscon_cmd`, `psc_sc_exit`, `_pspSysconGetCtrl2`; `proc_opens` [R] |
+@@ -461,7 +473,7 @@
+ | A1 entry | after the declarations, before `retry:` (`:72-75`) | inline, **no call**: origin (1.8); `ts_read()` → `tick_in`, `c_in`; snapshot `wd_calls`, `led_calls`, `current->nivcsw`, `ctx` bits. P: `psc_t_busy_p = 1`, `t_cmd`, `t_entry_tick/c`, `++psc_t_cmd_id`. M: `psc_t_busy_m = 1` | No |
+ | A2 per attempt | at `retry:` (`:75`), before S1 (`:77`) | `sc.spin = SYSCON_SPIN_MAX; sc.spin_ack = SYSCON_SPIN_MAX + 1; sc.dlast = sc.st9 = sc.sttx = 0;` (S1..S4 touch memory only) | No |
+ | A3 in window | `:102` `dmy =` → `sc.gin =`; `:114` → `sc.dlast =`; `:119` → `sc.st9 =`; `:130` → `sc.sttx =`; `:110`/`:113` `spin` → `sc.spin`; `:151`/`:154` → `sc.spin_ack` (assignments kept in place) | **Nothing added**: same volatile loads and stores to stack slots of the same width ([OBJ] `lw`, `andi 0xffff`, `sh` at `+0xdc..+0xe4`, `+0x14c..+0x154`, `+0x168..+0x174`, `+0x190..+0x1a8`; spin counters `lw/addiu/sw/lw` on `4(sp)` at `+0x110..+0x11c`, `+0x1dc..+0x1e8`) |
+-| A4 exits | `:113` `return -3;` → `{ result = -3; goto out; }`; `:154` likewise for −4 (teardown writes unchanged); after `:222` `sc.nwords = (ptr - rx_buf) >> 1;`; `:257` → `out: psc_sc_exit(&sc, tx_buf, rx_buf, result, retry_cnt); return result;` | −3/−4 branch sites keep their instruction count ([OBJ] `+0x124..+0x128`, `+0x20c`); the rest is after S20 |
++| A4 exits | `:113` `return -3;` → `{ result = -3; goto out; }`; `:154` likewise for −4 (teardown writes unchanged); **(§17 R-1)** after S20, `nwords` from the state the receive loop leaves at its exit (in the G2-attempt-1 build its counter register `t0`, handed over with the captures; the 7/8 case of 1.2), with no C use of `ptr` or `i` after the loop (one adds 2 instructions per received word in S18); `:257` → `out: psc_sc_exit(&sc, tx_buf, rx_buf, result, retry_cnt); return result;` | −3/−4 branch sites keep their instruction count ([OBJ] `+0x124..+0x128`, `+0x20c`); the rest is after S20 |
+ 
+ `psc_sc_exit()` (non-inline, new file `arch/mips/psp/psc.c`): (1) `ts_read()`
+ → `tick_out`, `c_out`. (2) **P**: invalidate, fill and publish the P slot
+@@ -481,6 +493,10 @@
+ the implementer drops captures in this order until the criteria hold and
+ records the deviation: `sttx`, `dlast`, `st9`, `gin`, then `spin_ack` (back to
+ one `spin`, losing `drain`). No rule depends only on those fields.
++**(§17 R-2)** These criteria are the acceptance test for D10. Within them 7.2
++allows exactly three differences from the baseline: stack-slot offsets, a
++consistent renaming of registers that keeps every value, and the delay slot of
++an exit branch after the exit decision and the path's last MMIO access.
+ 
+ ### 2.2 Watchdog (`arch/mips/psp/psp.c`)
+ 
+@@ -707,7 +723,8 @@
+ what hook S does for `wk_*` (`d` into `pre_wrk` if `class(prev)` is 1 or 2;
+ `pre_flags` b3 if it is not, b4 if it is 3, 4 or 5); at `next ==
+ psc_jp_task`: `pre_tot += now − pre_t0`, `pre_cls1 = class(prev)`, `pre_n++`,
+-`pre_on = 0`. `psc_sc_exit` copies them into SC bytes 42-46 and 78 (1.2) when
++`pre_on = 0`. `psc_sc_exit` copies them into SC bytes 42-44, 46 and 78-79 (1.2;
++byte 45 is `ms_delta`, **§17 R-6**) when
+ `pre_cmd_id` equals the command's `cmd_id`, between two reads of `pre_seq`.
+ Cost: one more compare per switch; ≈ 15 instructions per switch while the
+ thread is preempted. This names the actor of N1, N1m and H10 (6, 6.1).
+@@ -877,12 +894,18 @@
+ (`fs/binfmt_flat.c:575-596` → `mm/nommu.c:745`), which may fail late in a run
+ (A1 IF2), so **nothing is allocated after boot**:
+ 
+-- **One binary, two processes, both started at boot**, each ≈ 100 KB of data +
+-  bss + stack (40 KB flush buffer, 4 KB creation template, 16 KB `syslog`
++- **One binary, two processes, both started at boot**, each ≈ 100 KB (r5
++  estimate) of data + bss + stack (40 KB flush buffer, 4 KB creation template, 16 KB `syslog`
+   buffer, 4 KB `kmsg` and 2.4 KB PROCS buffers, 1.9 KB row buffer, **(r5)**
+   ≈ 6 KB of extent tables, 2.5 KB of S-window scratch, the 32-entry re-send
+   queue and the seen-inode list (4 KB), a 16 KB stack set with `flthdr -s
+-  16384`), one 128 KB block each; G2 C8 records the figure (≤ 128 KB).
++  16384`). **(§17 R-5, measured at G2 attempt 1)** data 2,896 + bss 112,720 +
++  stack 16,384 = 132,000 B, and this kernel's `binfmt_flat` puts the text
++  (51,904 B) in the same allocation: `CONFIG_SONY_PSP` forces `FLAT_FLAG_RAM`
++  (`fs/binfmt_flat.c:471-472`), so one `do_mmap` takes text + data + bss +
++  stack (`:626-628`), a `kmalloc` rounded to a power of two (`mm/nommu.c:744`):
++  183,968 B in **one 256 KB block each**, both allocated at boot, none later;
++  G2 C8 records the figure (≤ 256 KB).
+ - **Supervisor** (`pscol`, no arguments): `setsid()`; `/dev/null` on fds 0-2;
+   ignores SIGINT, SIGQUIT, SIGHUP, SIGTSTP, SIGTTIN, SIGTTOU, SIGPIPE;
+   `mkdir /ms0/PSCLOG` only if it is missing (RUNBOOK A4 creates it on the Mac,
+@@ -978,9 +1001,11 @@
+ 10. Check the memory guards (4.2); `nanosleep(200 ms)`.
+ 
+ **Bounds.** Records per unit of `cap`: 48 × 80 + 24 × 40 + 2 × 288 + 64 × 40 +
+-8 × 80 = 8,576 bytes; with `m ≤ 4` a RECS chunk is ≤ 34,304 + 40 (block
+-headers) + 20 = **34,364 bytes** (< 65,536). With STATS 788, PROCS ≤ 2,420,
+-UHB 104 and the PAD header: 37,696 → 37,888, within the **40,960-byte flush
++8 × 80 = 8,576 bytes; with `m ≤ 4` a RECS chunk is ≤ 34,304 + 80 (block
++headers: per ring one new-records block and at most one re-send block, 10.2;
++re-sent records count inside the cap, 4.6) + 20 = **34,404 bytes** (< 65,536;
++**§17 R-6**: 34,364 left out the re-send blocks). With STATS 788, PROCS ≤ 2,420,
++UHB 104 and the PAD header: 37,736 → 37,888, within the **40,960-byte flush
+ buffer**; KMSG (≤ 4,116) and EVENT (≤ 1,044) are added only if the flush stays
+ ≤ 40,960, else deferred (EVENT queue 8 KB; on overflow one
+ `events dropped <n>`). Nominal flush 1.5-3.5 KB (5.1).
+@@ -1494,7 +1519,8 @@
+ 8 KB step plus the FAT sector in two copies per cluster, 4,736 sector writes
+ (32 KB clusters), i.e. **8.8 KB/s** more physical writes on average, in
+ ≈ 1-minute bursts every ≈ 4.6 minutes. In the H1 shape P and POLL fall (each −4 ≥ 50 ms, recon §1.5). A
+-catch-up flush is ≤ 40,960 bytes (37,696 with the r5 UHB, padded to 37,888).
++catch-up flush is ≤ 40,960 bytes (**§17 R-6** 37,736 with the r5 UHB and the
++re-send block headers, padded to 37,888).
+ **(r5)** The S-record verdicts (4.8) add no stick bytes: ≈ 3 KB of `/proc` reads
+ and ≤ 3 `FIBMAP` calls per creation step. Script: section 15.6.
+ 
+@@ -1521,26 +1547,53 @@
+ **Kernel:** rings 652,288 B + stats 768 B + ≈ 1 KB = **≈ 653 KB**, 3.1 % of
+ telem's ≈ 20.8 MB `MemFree` (`telem/logs-from-stick/telem.log`); BSS is not in
+ `vmlinux.bin`; `psp_detect_mem_size` starts after `_end` (`psp.c:429`).
+-**Userland:** two `pscol` processes, ≈ 100 KB each (r5) in one 128 KB block,
+-allocated at boot only; telem used one ≈ 540 KB block rounded to 1 MB
+-(recon/input §6.1). **Image:** kernel text ≈ +7 KB (UNVERIFIED until built)
+-plus the `pscol` bFLT in the initramfs (≈ 24-32 KB, ≈ 12-18 KB gzipped); bound
+-≤ 48 KB growth for each of `vmlinux.bin` (1,723,228 B) and `vmlinux-0.22.bin`
+-(899,402 B), recorded at G2 C6.
++**Userland (§17 R-5, measured at G2 attempt 1):** two `pscol` processes, each
++in **one 256 KB block** (text 51,904 + data 2,896 + bss 112,720 + stack
++16,384 = 183,968 B; under `CONFIG_SONY_PSP` `binfmt_flat` puts the text in the
++same allocation, `fs/binfmt_flat.c:471-472`, `:626-628`), both allocated at
++boot, none later (4.2): 512 KB in all, 2.5 % of telem's ≈ 20.8 MB `MemFree`;
++telem used one ≈ 540 KB block rounded to 1 MB (recon/input §6.1). The r5 figure
++("≈ 100 KB each in one 128 KB block") was wrong twice: data + bss + stack alone
++is 132,000 B, and the text was not counted. **Kernel stack (§17 R-3):** the
++Nop path runs on the interrupted task's 8 KB kernel stack
++(`include/asm-mips/thread_info.h:65-66`, `:82`; `.config:98`, `:100`) and is
++≈ 280 B deeper than the baseline's (wrapper 72 B, `Syscon_cmd` frame 56 B
++instead of 48, the hand-off 128 B, or `psc_sc_exit` 104 B + `psc_fill_sc`
++64 B; G2 attempt 1 F5). The panel's 328 B frame runs only at T2d, never on a
++watchdog tick (2.3), so it never adds to the Nop path. The worst-case depth
++over an interrupted context's own stack is not measured (UNVERIFIED).
++**Image (§17 R-5, measured):** `vmlinux.bin` 1,723,228 → 1,766,859 B
++(**+43,631**: kernel code and data +16,384, the gzipped initramfs section
+++27,247 with the 55,044-B `pscol` bFLT); `vmlinux-0.22.bin` 899,402 →
++936,321 B (+36,919; +37,039 against the 2008 image the stick boots today). The
++r5 component estimates (kernel text ≈ +7 KB, bFLT ≈ 24-32 KB) were low. **The
++bound stands: ≤ 49,152 B (48 × 1,024) growth for each image against the
++baseline rebuild**; attempt 1 leaves 5,521 B of margin for `vmlinux.bin` and
++12,233 B for `vmlinux-0.22.bin`. For later revisions the one rule is that each
++G2 attempt restates both growths and the change since attempt 1; growth above
++49,152 B returns to G1. No tighter margin is set, because the bound is not
++derived from a known pspboot limit (R20; the G2 reviewer's reading of a 4 MB
++bound in the stripped loader is UNVERIFIED) and an image that does not load
++fails before the run is spent (8.3: the PSC display never appears, an abort).
++Whether pspboot loads the larger image is UNVERIFIED (R20).
+ 
+ ### 5.4 Time added
+ 
+ Assumptions (UNVERIFIED): ≈ 1 instruction per cycle cached, Count at the core
+-clock (`psp.c:38`), a miss ≤ 100 cycles; G2 substitutes objdump counts and the
+-run measures the costs (`p_rec_cost_*`, `w_rec_cost_max`, `panel_cost_*`).
++clock (`psp.c:38`), a miss ≤ 100 cycles. **(§17 R-3)** The `Syscon_cmd` rows
++below are G2 attempt 1's objdump counts of the release build
++(`gates/G2-attempt1-review.md` F5; function sizes in its `System.map`:
++`psc_syscon_cmd` 102, `psc_sc_exit` 583, `psc_fill_sc` 151, `psc_xfer_out` 34
++instructions), replacing the r5 estimates; the run measures the costs
++(`p_rec_cost_*`, `w_rec_cost_max`, `panel_cost_*`).
+ 
+ | Where | Added | Estimate |
+ |---|---|---|
+ | **Inside one transaction window (S5 → S20)** | **0 instructions** (2.1) | **0** |
+-| Thread command: before S5 / after S20 | ≈ 35 / ≈ 130 instructions (≤ 4 line misses) | ≈ 0.16 / ≈ 0.6 µs (≤ 2.4 µs) |
+-| G3-low gap between the 0x33 command's S20 and the 0x08 command's S13 | ≈ 165 instructions | ≈ 0.75 µs (7.3) |
+-| Per poll (2 commands, POLL, stages, counters) | ≈ 420 instructions | ≈ 2 µs against ≥ 56 ms per poll |
+-| Watchdog command (interrupts off) | ≈ 35 before its S5, ≈ 200 after its S20 | ≈ +1 µs per 1250 ticks |
++| Thread command: before S5 / after S20 **(§17 R-3)** | ≈ 60 (the wrapper `psc_syscon_cmd` before its call) / ≈ 400-550 (the hand-off ≈ 85 in `Syscon_cmd` and `psc_xfer_out`; `psc_sc_exit` ≈ 250-300 on the P path; `psc_fill_sc` 151 with its `memset`/`memcpy`) | ≈ 0.27 / ≈ 1.8-2.5 µs cached, plus I-cache misses on ≈ 2 KB of exit code (UNVERIFIED, inside `p_rec_cost_*`) |
++| G3-low gap between the 0x33 command's S20 and the 0x08 command's S13 **(§17 R-3)** | ≈ 460-610 instructions more than the baseline (the 0x33's exit, the 0x08's entry) plus the thread's stage stores between the two calls | ≈ 2.1-3 µs cached (7.3) |
++| Per poll (2 commands, POLL, stages, counters) **(§17 R-3)** | ≈ 1,200-1,500 instructions (2 × 460-610, and ≈ 300 for POLL, stages and counters: `psp_joypad_thread` grew from 364 to 662) | ≈ 5.5-7 µs against ≥ 56 ms per poll (≈ 0.01 %) |
++| Watchdog command (interrupts off) **(§17 R-3)** | ≈ 60 before its S5; after its S20 the hand-off ≈ 85, `psc_fill_sc` 151 and the W branch of `psc_sc_exit` with the inlined W extension: ≈ 450-800 (path not counted: UNVERIFIED) | ≈ +2-4 µs per 1250 ticks, measured as `w_rec_cost_max`; ≈ 280 B more stack (5.3) |
+ | Every tick / tick finding the thread running in a command | ≈ 16 / + ≈ 33 | ≈ 70 ns / + ≈ 0.15 µs |
+ | Wake-up of the thread; switches while it waits | ≈ 25; ≈ 15 each, ≈ 30 the last | its loop top starts ≈ 0.2 µs later |
+ | Any wake-up / any switch / LED operation / MS segment | 1 compare / 1 load + **(r4)** 1 compare / ≈ 25 / ≈ 56 | negligible |
+@@ -1551,6 +1604,21 @@
+ accesses plus the ACK latency, recon §1.2); it is measured and the HUD shows
+ median and maximum, so the D10 ratio is checked on the device.
+ 
++**(§17 R-3) The D10 ratio, re-derived with the measured counts.** Inside the
++window the added time is 0 and the window keeps its instructions (2.1, 7.2), so
++the ratio concerns only the time around it: ≈ 2.1-2.8 µs per thread command
++cached (≈ 0.27 µs before S5, ≈ 1.8-2.5 µs after S20; r5 said ≈ 0.8 µs). The
++command's own duration is at least its ≥ 23 uncached MMIO accesses, the
++syscon's ACK latency and, for GetCtrl2, 2 SPI words out and ≥ 5 in
++(`syscon.c:128-134`, `:201-217`; recon §1.2). The added time is ≤ 10 % of any
++command that lasts ≥ 28 µs (UNVERIFIED: the SPI clock and the MMIO latency are
++unknown). The run measures both sides of every command: the duration
++`c_out − c_in` (which itself contains the ≈ 60 entry and ≈ 85 hand-off
++instructions, ≈ 0.65 µs) and `p_rec_cost_last`/`max`, shown on HUD line 10 as
++`CMD MED`, `MAX` and `C` (8.2) and printed by the decoder (10.7 step 6,
++costs). D10's purpose, the window's own timing, does not depend on the ratio
++(7.3).
++
+ ---
+ ## 6. Coverage matrix
+ 
+@@ -1569,7 +1637,10 @@
+ `rx[7]`/`rx[8]`, active-low), flagged `no C0 reference`. The result is a
+ triple: **trigger** (H4, WB, H10, N1, N1m, N1p, none), **state** (H1-H3, H5-H7,
+ H9, N2-N6, N2b, N11), **H8 flags** (H4 may trigger what another shape
+-sustains, 9.6); the raw stream always remains for the analyst.
++sustains, 9.6); the raw stream always remains for the analyst. **(§17 R-1)**
++Where a row reads `nwords`, a record flagged `nw7or8` (1.2, 10.3) is read as
++the set {7, 8}; 10.7 ("`nwords` 7 or 8") shows row by row that no outcome
++changes.
+ 
+ | ID | Identifying fields and values | Could be confused with | How the records separate them |
+ |---|---|---|---|
+@@ -1652,17 +1723,17 @@
+ | Locks | **None added**: no spinlock, semaphore, `preempt_disable` or atomic on any new path | None |
+ | Interrupt state | **None changed**: no `local_irq_*`; watchdog-side work, the tick hook and the panel run in the existing interrupts-off region of the timer handler; the scheduler hooks run where the scheduler already has interrupts off | None |
+ | Delay inside S5..S20 | **None** (2.1, G2-checked) | None |
+-| Delay around the transaction | ≈ 35 instructions before S5, ≈ 130 after S20 | Each command starts ≈ 0.16 µs later; the next ≈ 0.75 µs later |
++| Delay around the transaction | **(§17 R-3)** ≈ 60 instructions before S5, ≈ 400-550 after S20 (objdump, 5.4) | Each command's S5 comes ≈ 0.3 µs later; the next command ≈ 2.1-3 µs later (cached) |
+ | MMIO accesses | **None added, none removed**, same order (2.1, 2.4); the panel writes framebuffer RAM only | None |
+ | New syscon commands | None | None |
+-| Timer interrupt | ≈ 16 instructions per tick; ≈ 33 more when the thread is running in a command; ≈ 1 µs extra on watchdog ticks | The thread resumes ≈ 0.15 µs (normal tick) or ≈ 1 µs (watchdog tick) later |
++| Timer interrupt | ≈ 16 instructions per tick; ≈ 33 more when the thread is running in a command; **(§17 R-3)** ≈ 2-4 µs extra on watchdog ticks (path count UNVERIFIED; `w_rec_cost_max`) | The thread resumes ≈ 0.15 µs (normal tick) or ≈ 2-4 µs (watchdog tick) later |
+ | Stall panel | Nothing while healthy; a paint is 0.2-1 ms interrupts off (UNVERIFIED, measured per paint), ≤ once a second, never on a watchdog tick, only in the occasions of 2.10 | A command straddling a painting tick is stretched by the paint time; flagged per command (`lc_flags` b5) and named by row N1p |
+ | Scheduler hooks (2.11) | One compare per wake-up, one load and **(r4)** one compare per switch; ≈ 25 per thread wake-up, ≈ 15 per switch while it waits or is preempted | Outside `Syscon_cmd`; the thread's 0x33 command starts ≈ 0.2 µs later after a wake-up; a preempted command resumes ≈ 0.1 µs later |
+ | Out-of-bounds checksum (A2 note) | The thread's and `Syscon_cmd`'s frames change, so the bytes the baseline checksum reads above `rx_buf` when `rx[1] ≥ 16` differ from the baseline's | Which corrupt long frame passes by chance (≈ 1/256) changes; the rate does not, and every acceptance is visible as `ret > 0` with `rx[1] ≥ 16` |
+ | Userland privilege (A2 OE4) | User processes keep kernel privilege (`arch/mips/kernel/process.c:81-83`; `USER_DS` = `KERNEL_DS`, `include/asm-mips/uaccess.h:58`, `:107-113`), so a `pscol` bug could store into kernel memory or MMIO | Mitigated (4.2 guards, 3.1 kernel guards, G2 review of `pscol` with C3/C4 rigour, Stage 3 ASan/UBSan fuzzing, decoder `instrumentation-suspect`); a stray store that hits no guard is not detectable (R16) |
+ | `printk` | One line at init. **(r5, A5 OE8)** The Memory Stick driver's `DBG` messages are compiled in (`ms_psp.c:17-24`; the attempt-4 statement that they were compiled out was wrong): two unthrottled lines per failed transfer (`:272-274`, `:370-371`), which `printk` draws through fbcon with interrupts off (`kernel/printk.c:819-828`). The worker sets the console log level to 4 at its start (**r7, A6-2:** `syscall(__NR_syslog, 8, 0, 4)`, the kernel call, not libc `syslog()`; return in EVENT `conlevel`, 4.2; `kernel/printk.c:292-300`): those lines carry the default level 4 (`:40`) and stay in the log and the KMSG chunks but are no longer drawn; `KERN_ERR` lines (FAT panic, `fs/fat/misc.c:22-32`; "Buffer I/O error", `fs/buffer.c:107`) still are | None on the syscon path. A healthy run is expected to print nothing after boot (any message is in KMSG, so a suppressed one is visible to the analyst); in error runs it removes interrupts-off drawing the instrumentation's own I/O would cause. What remains (the driver's 10 tries with `mdelay(1)` per failing sector, preemption off) is recorded as long S records and `wk_*`/`pre_*` holders |
+-| Code layout | `Syscon_cmd`'s frame grows; kernel text ≈ +7 KB | The drain and ACK loops' cache alignment may change the wall-clock length of the spin budget; `ack_polls` with duration measures it |
+-| Memory | ≈ 653 KB less RAM for userland (3.1 % of `MemFree`); the collector's two processes use less than telem's one | None |
++| Code layout | `Syscon_cmd`'s frame grows (48 → 56 B); **(§17 R-5)** kernel code and data +16,384 B in `vmlinux.bin` (measured, 5.3); **(§17 R-2)** the window sits 0xc4 bytes later and five callee-saved registers are renamed | The drain and ACK loops' cache alignment may change the wall-clock length of the spin budget; `ack_polls` with duration measures it. The renaming itself changes no timing (7.2) |
++| Memory | ≈ 653 KB less RAM for userland (3.1 % of `MemFree`); the collector's two processes use less than telem's one (**§17 R-5**: two 256 KB blocks against telem's 1 MB) | None |
+ | Userland load, Memory Stick activity | 7.4, 7.5 | 7.4, 7.5 |
+ 
+ ### 7.2 The "zero instructions in the window" claim, and how G2 verifies it
+@@ -1674,14 +1745,74 @@
+ branch shapes unchanged. Criteria and fallback order: 2.1. A reviewer checks
+ it from two objdump listings.
+ 
++**(§17 R-2) The acceptance test is the four criteria of 2.1**, applied to every
++path from the S5 load to the S20 store, the −3 and −4 exits included: (1) the
++same number of instructions, loop bodies of the same length and the same branch
++structure; (2) the same MMIO loads and stores in the same order and form
++(width, base value, offset); (3) no call; (4) no global load and no base-address
++reload. Within them exactly three differences from the baseline are allowed:
++**stack-slot offsets**; **a consistent renaming of registers that keeps every
++value** (a register that holds an address or a constant in the baseline is
++replaced throughout the window by one that holds the same value, set before S5
++and not written in the window); and **the delay slot of an exit branch** that
++runs after the exit decision and after the path's last MMIO access. The first
++paragraph of this section ("another slot gives the same instructions at another
++offset") and the summary described the compiler output expected, not the test;
++read literally, as "identical apart from stack offsets", they excluded a
++renaming that the criteria allow. The G2-attempt-1 build
++(renaming s3→s7, s4→s3, s5→s4, s6→s5, s7→s6; the first −3 exit's delay slot
++`lw s8,40(sp)` → `nop`; 105 = 105 instructions; `impl/syscon-window-diff.txt`,
++re-derived independently in `gates/G2-attempt1-review.md` 4.1 and
++`gates/G2-attempt1-verify.md` 5) passes it.
++
++**Why these differences cannot change the timing of the on-path instructions.**
++(a) **Renaming.** The renamed window has the same opcodes, immediates and memory
++operands and the same dependency graph: every instruction reads the value made
++by the same earlier instruction at the same distance. The renamed registers hold
++the same constants, set in the prologue (baseline `s4` = new `s3` =
++0xbe240004, `s7`/`s6` = 0xbe240008, `s3`/`s7` = 0xbe240000, `s5`/`s4` and
++`s6`/`s5` = 8; impl/syscon-window-diff.txt, both listings), and the window only
++reads them. On an in-order MIPS32 pipeline the cycles a sequence takes depend on
++its opcodes, its producer-to-consumer distances (load-use and multiply
++interlocks), the latency of each memory access (set by its address) and the
++branch outcomes (set by the values); none of these depends on which general
++register number carries a value, and only general registers are renamed (no
++HI/LO or CP0 register). **UNVERIFIED:** that Allegrex has no timing that
++depends on register numbers. The tree holds no description of its pipeline; the
++claim rests on the standard in-order MIPS32 model. (b) **The delay slot.** It
++belongs to the `j` taken when the drain loop's bound has run out
++(`syscon.c:110-113`): the `bne` has fallen through, `li t3,-3` in its own delay
++slot is unchanged, the −3 decision is made, and the path's last MMIO access (the
++status read of `0xbe58000c`) is behind it; the original code touches no MMIO
++register between that read and `return -3`. Baseline `lw s8,40(sp)` (the
++epilogue's restore, scheduled early) against `nop` changes only the time from
++the −3 decision to the record, by one cycle or one D-cache miss. That is time
++after the transaction in the sense of 5.4, and it occurs only on a −3 exit,
++after 1,000,001 drain iterations. (c) **What does move.** The window's
++instructions sit 0xc4 bytes later and its stack slots at other offsets of a
++deeper frame, so I-cache and D-cache line placement differ. That is 7.1's "Code
++layout" row, true of any rebuild and not caused by the renaming; it can change
++the wall-clock length of a spin loop, which `ack_polls` with the duration
++measures. In the baseline too the slots' addresses vary with the caller (the
++thread's stack, or the interrupted task's stack for the Nop).
++
+ ### 7.3 Why this neither hides nor causes H4
+ 
+ - An interleave needs a Nop tick (the start of a handler, `psp.c:350-359`) to
+   land while a thread command is in S5..S20. The thread wakes on a tick
+   (`msleep` counts jiffies, recon/input §4), so its command's start phase and
+-  length decide. We add nothing to the length inside the window and shift
+-  starts by ≈ 0.16-1 µs against 4,000 µs: ≤ ≈ 0.025 % absolute change in the
+-  chance of a straddle.
++  length decide. We add nothing to the length inside the window (7.2).
++  **(§17 R-3, measured counts)** We shift starts: the 0x33 command's window by
++  ≈ 0.3-0.6 µs (its ≈ 60 entry instructions and the POLL loop-top code), the
++  0x08 command's by ≈ 2.4-3.4 µs (also the 0x33's ≈ 400-550 instructions after
++  its S20), and a thread command resumed after a Nop by ≈ 2-4 µs. Against a
++  4,000 µs tick, a shift δ changes the chance that a given Nop lands in a given
++  window by at most δ / T when the window's phase is spread: ≤ ≈ 0.09 %
++  absolute (r5 said 0.025 % from its estimates). Cache misses can make δ
++  larger (UNVERIFIED; one 100-cycle miss is ≈ 0.45 µs). The phase is not
++  assumed: every command's `(tick_in, c_in)` and `c_out` are recorded, so the
++  windows' actual phases, the gap from the 0x33's `c_out` to the 0x08's `c_in`,
++  and any window sitting within δ of a tick edge are in the data.
+ - **The larger lever is load (A1/A2 OE3).** The Nop of tick k runs before that
+   tick's wake-ups (`psp.c:359` before `:367`), so it hits only a command that
+   started before tick k. What pushes a command towards the next edge is
+@@ -1697,13 +1828,24 @@
+   the per-hit harm probability; "H4 at P4/P5a is not sufficient on this kernel
+   at p ≥ 0.1" only if n(P4) + n(P5a) ≥ 30, else "inconclusive" with the
+   exposure and the collector's share of late starts.
+-- **G3-low gap** (0x33's S20 to 0x08's S13) grows by ≈ 0.75 µs; the original
+-  code comments out a 5 µs wait after GPIO3 falls (`syscon.c:95-97`,
+-  `:142-144`), a hint of a syscon minimum, so a longer gap could make a "gap
+-  too short" failure rarer. Recorded per poll and reported (R6). **Resumption
+-  after a Nop** is ≈ 1 µs later: harmless if G4L is latched, as the code
+-  treats it (`syscon.c:159`); a pulse under ≈ 1 µs could be missed if it is
++- **G3-low gap** (0x33's S20 to 0x08's S13) grows by ≈ 2.1-3 µs (**§17 R-3**;
++  r5 said ≈ 0.75 µs); the original code comments out a 5 µs wait after GPIO3
++  falls (`syscon.c:95-97`, `:142-144`), a hint of a syscon minimum, so a longer
++  gap could make a "gap too short" failure rarer. The added time is now about
++  half of that commented-out wait, so this is the one direction in which the
++  instrumentation could hide a failure; it is recorded per poll (the 0x33's
++  `c_out` to the 0x08's `c_in`, all of the added gap but the ≈ 85 hand-off
++  instructions) and reported (R6). **Resumption after a Nop** is ≈ 2-4 µs later
++  (**§17 R-3**): harmless if G4L is latched, as the code treats it
++  (`syscon.c:159`); a pulse under ≈ 2-4 µs could be missed if it is
+   level-sensitive (R6).
++- **(§17 R-3) The conclusion holds with the measured counts.** H4 acts inside
++  the window, which keeps its instructions and MMIO order (7.2); outside it the
++  added time is ≈ 0.1 % of a tick, small against the variation of the
++  thread's start that load already causes and the run records (`wk_delay`,
++  `pre_tot`, 2.11), and measured per command. It neither creates an
++  interleave (nothing is added where a Nop can land) nor removes one beyond
++  the ≤ ≈ 0.09 % phase shift above and the G3-low gap effect just stated.
+ 
+ ### 7.4 Userland load
+ 
+@@ -1814,7 +1956,7 @@
+ 
+ | Check | Passes when | Proves |
+ |---|---|---|
+-| KRN | `/proc/psc/stats` opens with magic `PSST`, version 5, size 768 and the collector's `build_id` | the instrumented kernel matches this collector |
++| KRN | `/proc/psc/stats` opens with magic `PSST`, version 5, size 768, and **(§17 R-4)** stats word 2 equals the CRC-32 (zlib, initial value 0) of `/proc/version` as the worker reads it once at its start (1.7); a mismatch keeps KRN red | the stats block belongs to the running kernel, whose banner the FILEHDR records (10.2). Collector and kernel are one image (`pscol` is in its initramfs, 4.2), so the collector carries no build-time value |
+ | WDOG | W `seq` 0 has origin WB; ≥ 1 WT record with `tick % 1250 == 0`, consecutive WT ticks differ by 1250; WT records have `ctx` b2 (IE) = 0, **b3 (`in_interrupt()`) = 0**, `ext_flags` b0 = 1; P records have origin P with `ctx` b4 = 1, b2 = 1 (CTX merged here) | watchdog recording, cycle alignment, both contexts told apart without `in_interrupt()` |
+ | STICK | `/proc/mounts` shows `/ms0` vfat; **(r5)** the first flush into the first file's confirmed prefix is DURABLE by its S records, with the geometry self-check (4.8); `durable_tick` advanced (the first complete drain); the measured speed ≥ 30 KB/s; the names budget ≥ 400 (4.4 step 6) | data reaches the stick, the worker reads the stick's own answers correctly, the stick is fast enough for the lossless range of 15.6, and the kernel knows how far |
+ | REC | `LOST 0 BAD 0 STUCK 0` for 3 s after the first complete drain; `nwords ≤ 8`; `nwords = 0` ⇒ `rx` all `ff`; `ret > 0` ⇒ `rx[0] == ret` | records are consistent |
+@@ -1933,6 +2075,17 @@
+ 
+ Stats words 20-22 must equal `System.map` and word 2 the build's `build_id`,
+ else the EPC analysis is refused with the reason (parsing still runs).
++**(§17 R-4)** The build's `build_id` is read from `build_id.txt` in the build
++directory given to the decoder (`BUILD/`), which must be the **packaged**
++build's release directory (`System.map`, `epcmap.txt`, `regmap.txt`,
++`panellayout.txt`, `banner.txt`, `build_id.txt`; for the G2-attempt-1 image,
++`work/out/20261006T021722Z`, `0x9b3c599e`). `build_id.txt` holds `0x%08x` of
++the CRC-32 (zlib, initial value 0) of `banner.txt`, which is the exact
++`linux_banner` (1.7). A rebuild of the same commit has another banner (its build
++time) and therefore another `build_id`, and is refused even when its
++`System.map` is identical: the maps must come from the image that ran. The
++decoder also checks that the CRC-32 of each FILEHDR's `/proc/version` text (up
++to its first NUL, 10.2) equals stats word 2, and reports a mismatch.
+ 
+ ### 10.2 File and chunk format
+ 
+@@ -1945,7 +2098,8 @@
+ FILEHDR the CRC's initial value is the boot nonce** (`zlib.crc32(payload,
+ nonce)`), so a chunk written by another boot fails its CRC here; a FILEHDR has
+ the plain CRC (initial 0) so that its nonce can be read first. **Writer
+-guarantees (4.3):** one RECS chunk per flush ≤ 34,364 B; KMSG ≤ 4,096, EVENT ≤ 1,024, PROCS ≤ 2,400 B of
++guarantees (4.3):** one RECS chunk per flush ≤ 34,404 B (**§17 R-6**: new-records
++and re-send blocks); KMSG ≤ 4,096, EVENT ≤ 1,024, PROCS ≤ 2,400 B of
+ payload; STATS 768; UHB 84; a flush ≤ 40,960 B starting at a multiple of 512;
+ every segment starts with FILEHDR + PAD = 1,536 B written by its creation, and
+ no other flush has a FILEHDR. The decoder keeps 65,536 as a sanity bound.
+@@ -2021,6 +2175,10 @@
+ value nearest the record's own position; **(r4, A4 IF6)** if that lands on a
+ missing `seq`, the record is paired by `(tick, Count)` instead (flagged). Every
+ string and offset of section 1 was rechecked with `struct.calcsize` (r5, 15.6).
++**(§17 R-1)** An SC, W or M record with `nwords` = 7 and `rx[14]` = `rx[15]` =
++0xff is flagged **`nw7or8`** and carries the value set {7, 8} (1.2); every other
++record carries {`nwords`}. The CSV keeps the raw value and the flag, and
++REPORT.md counts the flagged records per command and origin.
+ 
+ ### 10.4 Stats
+ 
+@@ -2150,6 +2308,41 @@
+    part, **(r4)** and the in-flight preempted time by holder class with its
+    collector part (`pre_tot`, `pre_wrk`, `pre_cls`). All rules and thresholds are fixed in the tool before the run (G3 R6).
+ 
++**`nwords` 7 or 8 (§17 R-1), every rule that reads it.** A flagged record (10.3)
++differs from an exact one only in whether an 8th word 0xFFFF arrived; its 16
++`rx` bytes, and so its checksum result `ret`, its `rx[2]` and its button bytes,
++are the same either way. Rule by rule:
++- **Stats outcome counters** (1.7 words 31-51: `ret == 0 && nwords > 0`, `ret
++  == 0 && nwords == 0`): unaffected, 7 and 8 are both > 0.
++- **H1, H3** (`nwords = 0`) and the P-point outcome **E3** (`ret 0`, `nwords 0`,
++  step 5): unaffected; 0 is exact, the case needs 7 words read.
++- **H2, N10, E4** (`nwords ≥ 1`), **H3 against N2b** (N2b has `nwords ≥ 1`),
++  the self-test **POLL:NW0** (`nwords ≥ 1`) and **REC** (`nwords ≤ 8`; `nwords
++  = 0` ⇒ `rx` all `ff`): unaffected; no threshold lies between 7 and 8.
++- **Template comparisons**, step 2 (per-command `nwords`, and the code
++  expectation "exact length from `rx[1]`"), used by **H8** flags and **O3**,
++  by **WB** and **H4** (the Nop's own reply against the template), by **N2b /
++  UL3** (command n's reply against the template of command n−1's `cmd`) and by
++  **H5** wherever the received length is compared with `rx[1]`: a record matches
++  a template value or expected length L when L is in its set. The outcome could
++  differ only for a frame whose 8th word would be exactly 0xFFFF, and then the
++  bytes these rows decide on (`ret`, `rx[1]`, `rx[2]`, the checksum, the
++  response code) are identical; H5 itself reads `ret`, `retries` and `rx`, not
++  `nwords`. If the healthy template holds flagged records for a command, the
++  decoder prints that the ambiguity is live for it. By the source a healthy
++  0x08 reply is ≥ 5 words (`syscon.c:362-365`); whether any healthy reply is 8
++  words is UNVERIFIED, and the template shows it.
++- **P6 cross-check** (step 5, "−2 with `nwords` = j"): j ≤ 7 (the Nop came after
++  j of n ≤ 8 words), so a flagged record with j = 7 passes. The check then
++  cannot flag the one inconsistency "the thread read an 8th word 0xFFFF
++  itself", which an exact count could; −2 is allowed at P6 either way, so the
++  P-point and the classification do not change.
++- **Step 7** harm (`ret`, `rx[2]`) and **H6, H7, H9-H10, N1-N11** other than
++  those above: do not read `nwords`.
++- **Display only:** the panel's line 4 (2.10) and the boot `printk` `nw=` (2.8)
++  show the raw value. The panel does not show `rx[14..15]`, so a panel
++  `nwords` 7 reads "7 or 8"; the records decide.
++
+ ### 10.8 Transcribing the stall panel from photographs
+ 
+ `--panel photo_id=<line 1>|...|<line 6>` is parsed by column
+@@ -2171,7 +2364,7 @@
+ | R3 | CPU constants (IPC, Count = core clock, cache) are guesses; reading CP0 Count/Status is assumed free of side effects (the kernel never reads Count today, recon §6) | µs figures; every record | Costs measured on the device; CP0 moves are not MMIO and run from the self-test on, so a problem shows before death |
+ | R4 | No new register reads: H8 sees only values the code already reads | H8 | Declared blind spot (row H8), required by dossier 9.1 |
+ | R5 | EPC capture assumes `thread_info->regs` is set by the interrupt entry (`genex.S:166-167`, `:266-267`) and the timer is the only interrupt (`psp.c:637-654`) | H4, H10, N1 step | Bounds checks; WDOG checks `regs` valid; another IRQ would print "Unknown IRQ" into KMSG |
+-| R6 | Syscon timing sensitivity: G4L latched or level (resumption ≈ 1 µs later); G3-low gap ≈ 0.75 µs longer, original gap unknown | could lower a timing-dependent failure's rate | Gap measured per poll and reported (7.3); level-sensitive G4L judged unlikely (separate acknowledge write, `syscon.c:159`) |
++| R6 | Syscon timing sensitivity: G4L latched or level (resumption ≈ 2-4 µs later); G3-low gap ≈ 2.1-3 µs longer (**§17 R-3**, measured counts; r5 said 1 µs and 0.75 µs), original gap unknown | could lower a timing-dependent failure's rate | Gap measured per poll and reported (7.3); level-sensitive G4L judged unlikely (separate acknowledge write, `syscon.c:159`) |
+ | R7 | LED read-modify-writes ≈ 3.1× telem's on average, ≈ 7.9× in creation minutes, ≈ 46× in 64 KB steps (preallocation); cluster size and FAT copies UNVERIFIED | H10 exposure | Raises, does not mask; measured (`led_calls`, S records, read-back ORs); creation intervals flagged by the decoder (7.5) |
+ | R8 | Memory Stick throughput and `fsync` duration are UNKNOWN; the design needs ≈ 20.8 KB/s of physical writes on average; the collector's start time (≈ 20-40 s) is UNVERIFIED | loss bound, creation time, catch-up, self-test time | **(r5)** Measured at start and gated: STICK needs ≥ 30 KB/s (4.8, 8.2), else `MS SLOW` and an abort. The model of 15.6 loses nothing under the sporadic pattern (98 events per 30 min, whole-tick and per-operation) from 28 KB/s up (**r7, A6-3:** at 25 KB/s 1 whole-tick run in 260 loses 15.2 s) and under whole-stick outages ≤ 100 s at ≥ 30 KB/s; the first complete drain comes ≤ 35 s after worker start at 30 KB/s. The kernel shows the durable age; UHB timings and the first UHB's `uptime_cs`; the runbook waits 90 s (+45 s); **(r5)** a bad data region costs 3 FAILED flushes before the switch (4.6; the r4 wording "one failed flush per tick that meets it" was wrong, A5 IF9) |
+ | R9 | P4 against P5a relies on the syscon's behaviour after a dropped G3 (recon §5.1) | H4 point | Several fields; if ambiguous, reported "P4 or P5a" |
+@@ -2185,7 +2378,7 @@
+ | R17 | Nested-tick detection relies on the softirq/hardirq count (`softirq.c:217,225`); the scheduler hooks sit at `sched.c:1657` and `:3700-3707` (`try_to_wake_up` is reached from `:1669`, `:1676`, `:3817`) | exact `lc` step; wake-up attribution | By construction; a missed nested tick shows as `lc_epc` outside `Syscon_cmd` while `t_busy` is set; G2 checks hook placement with objdump; Stage 3 tests |
+ | R18 | **(r3)** The VFAT-FI harness (a Malta build of this tree under `qemu-system-mipsel`) may not build or boot with the staging toolchain (UNVERIFIED) | evidence for the IF5 fix before the run | If it cannot be made to work, Stage 3 reports the test as failed (G3 R2) and the human decides; the code argument of 4.4 stands on its own |
+ | R19 | **(r3)** macOS behaviour: whether an `/etc/fstab` `noauto` entry stops automount of this stick, and whether a read-only mount writes nothing (UNVERIFIED) | the stick's state after the run | Rehearsed on the operator's Mac before the run (RUNBOOK A0); fallback: unmount at once and image (RUNBOOK E) |
+-| R20 | Packaging: pspboot must load the larger image (limit unknown; growth ≤ 48 KB each); Stage 2 must point `.config:163` at the work copy's cpio (recon/build.md §1.3) | boot, collector present | G2 C6 sizes; Stage 3 unpacks the embedded cpio and checks `pscol` and the `rc.sysinit` lines; a failure shows at the self-test |
++| R20 | Packaging: pspboot must load the larger image (limit unknown; growth ≤ 49,152 B each; **§17 R-5**: +43,631 B `vmlinux.bin`, +36,919 B `vmlinux-0.22.bin` at G2 attempt 1); Stage 2 must point `.config:163` at the work copy's cpio (recon/build.md §1.3) | boot, collector present | G2 C6 sizes; Stage 3 unpacks the embedded cpio and checks `pscol` and the `rc.sysinit` lines; a failure shows at the self-test |
+ | R21 | The PSP-1001 POWER/HOLD slider direction (up power, down HOLD) is hardware knowledge | runbook D7, C0 | RUNBOOK states it and says to stop and ask if the unit is marked differently; accidental power-off before death is an abort |
+ | R22 | **(r3, N-4)** That a reply's `rx[2]` names the command it answers rests on an author comment (`syscon.h:55-58`), UNVERIFIED | H6, N2b | Rules compare with the template's per-command `rx[2]`; the literal value only without a template, flagged `rx2 literal`; Stage 3 tests a healthy `rx[2]` other than 0x08 |
+ | R23 | **(r4, A4-2)** The read-back page is dropped by `fadvise64_64` through `syscall()` in the o32 seven-slot layout because uClibc's `posix_fadvise` marshals five (section 14); the call is never used by any other program on this system | whether the read-back reaches the stick | The worker checks the return (0) and that `ms_seg_rd` rose; a cached read-back is only an EVENT; G2 checks the call in objdump; VFAT-FI runs the same `mm/fadvise.c` |
+@@ -2678,3 +2871,36 @@
+ | **Budget** | `budget_r5.py` re-run: every figure unchanged; **no budget number changed**. Only stale text was corrected to the script's values (4.3). `sim_r5.py` re-run for (e) only |
+ | **D20** | UHB `seg` re-checked: `'<21I'`, `seg` word 18 at byte 72, bits 20-28, writer and decoder now state the same mapping; no other field's description changed. The EVENT list (10.2) gains `conlevel` to match 4.2 |
+ | **Lines** | DESIGN.md through section 12: **2,213 → 2,254 (+41)**; RUNBOOK.md 483 → 485 (+2) |
++
++---
++
++## 17. G1 ruling after G2 attempt 1
++
++Designer's proposal on the "back to G1" routing of `gates/LOG.md` (G2,
++2026-10-06): `gates/G2-attempt1-review.md` F1 (DV-3) and F4-F5,
++`gates/G2-attempt1-verify.md` findings 1-3, `impl/IMPLEMENTATION.md` section 0
++(OD-1, OD-2, OD-3, OD-5, OD-6) and its two stale texts. Text only: no
++mechanism, record, field, ring, check, HUD line, panel state or runbook step was
++added, and nothing outside these six items changed. Frozen inputs:
++`design/DESIGN.r7.md`, `design/RUNBOOK.r7.md` (the G1-approved revision 6 with
++the A7 edits); the change is `design/g1ruling.diff`. RUNBOOK.md is unchanged:
++none of its steps, strings or figures depends on these items (KRN red is an
++abort as before; `POLL:NW0` is unaffected, 10.7). The G2 code findings F2, F3,
++F6 and F7 need no design change and stay with G2.
++
++| Item | Decision | Sections changed | Why D1-D14 still hold |
++|---|---|---|---|
++| **R-1** (OD-1, DV-3; D3 against D10) | **Option (a).** `nwords` is exact for 0 to 7 received words; `nwords` = 7 with `rx[14..15]` = `ff ff` means "7 or 8", flagged `nw7or8` by the decoder and read as the set {7, 8} by every rule. Options (b) (+2 instructions per received word in S18) and (c) (+1 hand-written instruction on the 8-word exit edge) are **not approved**: both add instructions inside S13..S20, the G3-high part of the window where H4 and H10 act (J1, 7.3), and (c) would be hand-written code inside the window, a new mechanism that the 2.1 criteria cannot compare with the baseline | Header; 1.2 offset 22; 2.1 A4; 6 (preamble); 10.3; 10.7 ("`nwords` 7 or 8", rule by rule) | **D3:** `rx[16]`, `cmd`, `ret` and the word count are recorded raw; the count is exact except in one case that the record itself identifies, and there the 16 `rx` bytes are identical whether the 8th word arrived or not, so the one bit lost carries no byte of the frame. **D2:** every row that reads `nwords` was checked (10.7): thresholds at 0, ≥ 1 and ≤ 8 are not crossed; template, WB, H4, N2b (UL3), H5 and H8/O3 comparisons use set membership and decide on bytes that are the same either way; the P6 cross-check loses only an "inconsistent" flag in a case whose outcome (−2) is allowed either way. **D10:** 0 instructions in the window, unchanged. **D14:** `ret` still separates −2, −3, −4, −5. D1, D4-D9, D11-D13 do not involve `nwords` |
++| **R-2** (OD-2, DV-4; D10 wording) | **The acceptance test for D10 is the 2.1 criteria** (as 2.1 and 7.2 already said); literal identity is not. Within them exactly three differences are allowed: stack-slot offsets, a consistent value-preserving renaming of registers, and an exit branch's delay slot after the exit decision and the path's last MMIO access. The G2-attempt-1 window passes (105 = 105, same MMIO order and form, no call, no global load or base reload) | Summary 1; 2.1 (after the criteria); 7.1 "Code layout"; 7.2 (test, and why the differences cannot change on-path timing) | **D10:** nothing is added inside the window and its timing is unchanged: renaming keeps opcodes, operands, values and the dependency graph, on which in-order MIPS32 timing depends (that Allegrex has no register-number-dependent timing is UNVERIFIED, 7.2); the changed delay slot runs after the −3 decision and the last MMIO access. The layout shift (0xc4 bytes) was already accepted in 7.1 and is measured (`ack_polls`, duration). No lock or interrupt masking anywhere (7.1). Other D items are not involved |
++| **R-3** (G2 F5; 5.4, 7.3) | **Restated with the objdump counts; no trim.** ≈ 60 instructions before S5 and ≈ 400-550 after S20 per thread command (≈ 2.1-2.8 µs cached, r5: ≈ 0.8 µs); G3-low gap +2.1-3 µs (r5: 0.75 µs); watchdog path +2-4 µs (path count UNVERIFIED, measured as `w_rec_cost_max`); ≈ 280 B more stack on the Nop path. Not trimmed: the cost is outside the window, takes no lock and masks nothing; trimming `psc_sc_exit` would rework code that passed C3/C4 (the DV-5 snapshot order) for a gain of ≈ 0.05 % of a tick, and the G3-low-gap effect is recorded per poll | Summary 7; section 0 K1; 5.3 (stack); 5.4 (rows, D10 ratio paragraph); 7.1 two rows; 7.3 bullets 1 and 4, new bullet 5; 11.1 R6 | **D10:** "beyond the few instructions needed to append a record": the added code is the record append itself (fill, copy of the `lc`/LED/holder words under their brackets, publish) and is outside S5..S20; its time is stated (5.4) and is ≤ 10 % of any command lasting ≥ 28 µs (UNVERIFIED; measured on every command, HUD line 10). The H4 argument (7.3) holds: the window is unchanged and start phases move ≤ ≈ 0.09 % of a tick, recorded per command. The one direction that could hide a failure, a longer G3-low gap, is stated and recorded (7.3, R6). **D9, C3:** the deeper Nop stack is ≈ 280 B of 8 KB, with the panel never on a watchdog tick |
++| **R-4** (OD-3, G2 F4; `build_id`) | **The kernel's definition is adopted:** stats word 2 = CRC-32 (zlib, initial 0) of `linux_banner`, whose bytes equal `/proc/version`. KRN requires word 2 to equal the CRC-32 of `/proc/version` read by the worker at start; the decoder takes the expected value from the packaged build's `BUILD/build_id.txt` and also checks it against each FILEHDR's `/proc/version` | 1.7 words 0-4; 8.2 KRN; 10.1 | **D13:** KRN still proves, before death, that the stats block is the running kernel's; the collector-kernel match is by construction (one image). **D2, D20:** the EPC and register maps are accepted only from the image that ran, so the H4 step (W `epc`, `lc_epc`) cannot be read through another build's maps. No kernel or record change (the value is already computed and stored) |
++| **R-5** (OD-5, OD-6) | **Figures corrected; the image bound stands.** `pscol`: 183,968 B per process (text included under `CONFIG_SONY_PSP`, `fs/binfmt_flat.c:471-472`), one 256 KB block each, both at boot, none later. Image: +43,631 B `vmlinux.bin` (5,521 B under 49,152), +36,919 B `vmlinux-0.22.bin`; pspboot load UNVERIFIED (R20). Bound kept at 49,152 B per image; the only rule for later revisions is that each G2 attempt restates both growths and the change since attempt 1, and growth above the bound returns to G1 (an image that does not load is an abort, 8.3, so no tighter margin buys anything) | Summary 7; section 0 U1; 4.2; 5.3; 7.1 "Code layout", "Memory"; 11.1 R20 | **D7, IF2 (U1):** no allocation after boot still holds: both blocks are taken at boot and the takeover runs in the supervisor's own block. 512 KB is 2.5 % of `MemFree` and less than telem's 1 MB, so 7.1's memory statement stands. **D12:** stick volume unchanged. Other D items are not involved |
++| **R-6** (two stale texts) | **Fixed to match the format.** A RECS chunk is ≤ 34,304 + 80 (a new-records block and at most one re-send block per ring) + 20 = 34,404 B; a flush 37,736 → 37,888 B, still ≤ 40,960. 2.11 now names SC bytes 42-44, 46 and 78-79 (`pre_*`); byte 45 is `ms_delta` | 4.3 Bounds; 5.1; 10.2 writer guarantees; 2.11 | **D20:** the text now matches the format field for field (the code already did: G2 attempt 1 section 6.2). **D12:** the flush bound still fits the 40,960-byte buffer. No record, chunk or code changes |
++
++**Consequences for Stage 2 (to implement exactly, then G2 attempt 2):** the
++decoder flags `nw7or8` and applies set membership in the rules of 10.7; pscol's
++KRN computes the CRC-32 of `/proc/version` at worker start and compares it with
++stats word 2; the package carries `BUILD/build_id.txt` from the packaged build's
++`banner.txt`; IMPLEMENTATION.md restates the 5.4 counts if `psc.c` or
++`syscon.c` change, and both image growths. The kernel needs no change for these
++items.

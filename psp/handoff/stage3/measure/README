@@ -1,0 +1,45 @@
+stage3/measure: re-measurement of the instrumentation's cost outside the
+S5..S20 window, from the RELEASED image (Stage 3 closure: G2 attempt 2 N1,
+verifier advisory 4, G1-ruling review A-1/A-2, red team K5/K6/K8 constants).
+
+Files
+  mips32.py           MIPS32/Allegrex integer interpreter (delay slots,
+                      branch-likely nullification, CP0 Count +1 per
+                      executed instruction). Written for this closure; it
+                      shares no code with handoff/impl/pathcount.py.
+  measure.py          the scenarios (thread P08/P33, timer TICK/WD/WDP/T2D,
+                      the thread-side hooks, the G3-low gap, the c_in->c_out
+                      model for the K5 MMIO bound) on BASE and NEW
+  measure-output.json raw results (python3 measure.py > measure-output.json)
+  summary.py, SUMMARY.txt   the table DESIGN 18 and IMPLEMENTATION "Stage 3
+                      closure" cite (python3 summary.py)
+  thread-code-listing.txt   objdump excerpt of psp_joypad_thread (both
+                      builds) for the statically counted thread code
+  inputs.sha256       sha256 of the images and listings used
+
+Inputs (read only)
+  BASE work/out/20260927T204657Z  (unmodified tree, build.sh)
+  NEW  work/out/20261006T052947Z  (the release: vmlinux.bin 22fc3934... =
+       gunzip of deploy/.../vmlinux-0.22.bin 4f9b69dc...)
+  work/linux/include/asm-mips/asm-offsets.h (PT_*, TI_REGS, _THREAD_SIZE)
+  Listings for reading/cross-checking (not needed by measure.py):
+  sudo docker run --rm --platform linux/386 -v /home/ubuntu/psp:/work:ro \
+    psp-build:bullseye bash -c 'PATH=/work/staging_dir/bin:/work/staging_dir/usr/bin \
+    mipsel-linux-uclibc-objdump -d /work/work/out/<dir>/vmlinux'
+
+Model and assumptions (UNVERIFIED, as DESIGN 5.4): 1 instruction per cycle,
+CP0 Count at the core clock (220,912,896 Hz), no cache or MMIO latency;
+RX FIFO empty at entry, ACK after 20 polls, replies 0x08 5 words, 0x33 and
+Nop 2 words, empty-FIFO read 0xFFFF. Counts are executed instructions; a
+nullified delay slot is not counted. Scenario state is set directly in
+psc_mem (offsets from include/asm-mips/psc.h, checked against the listing:
+wd_ctx = psc_mem+0x9f744, t2d_due = psc_mem+0x9f8f0).
+
+Agreement with the implementer's interpreter (IMPLEMENTATION 9.2):
+identical for P08 (+75/+482/+557, +208 B), P33 (+560), TICK (+48), WDP
+(+1,104), stack (+216 B Nop path, 488 B T2D); WD +925 (pathcount +922),
+first Nop +994 (+990): 3-4 instructions apart, scenario state differs
+slightly (which word: UNVERIFIED). T2D 205,884 against 228,520: the
+panel text is content-dependent (psc_panel_fill 139,575 and
+pspClearDcache 1,289 identical). New here: the scheduler hooks, poll
+begin/end, the G3-low gap decomposition and the c_in->c_out model.

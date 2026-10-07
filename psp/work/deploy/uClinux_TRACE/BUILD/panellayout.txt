@@ -1,0 +1,82 @@
+# panellayout.txt - kernel stall panel columns (DESIGN 2.10, 10.8)
+# Source: arch/mips/psp/psc_panel.c (stage2-trace). Stage 2 deliverable.
+#
+# Geometry: bottom band rows 176-271 (96 rows), x 0-479, 2-pixel magenta
+# border. Text: 5x7 font at scale 2, 40 columns x 6 lines, cell 11 x 15 px,
+# column k at x = 20 + 11k, line n at y = 179 + 15n. Glyphs: 0-9 A-Z space - .
+# White text on black. A clearing paint is black with no border.
+#
+# One record per field: <line> <first col> <last col> <name> <format>
+# Columns are 0-based. Formats: hN = N hex digits (upper case), dN = N decimal
+# digits (zero padded), age = "ddd.d" seconds below 1000 s, else "ddddd"
+# whole seconds (capped 99999), lit = literal text.
+#
+# Line 1: "PSC STALL DUR 012.3 RDR 000.4 PNT 00012"
+1  0  8  title          lit   "PSC STALL" | "PSC TEST " | "PSC MS RO" (MS RO wins, then TEST)
+1 10 12  -              lit   "DUR"
+1 14 18  dur_age        age   (now - durable_tick) / 250
+1 20 22  -              lit   "RDR"
+1 24 28  rdr_age        age   (now - last_reader_tick) / 250
+1 30 32  -              lit   "PNT"
+1 34 38  panel_paints   d5    panel_paints including this paint, mod 100000
+#
+# Line 2: "NOW 0001E271 P00001 E880CF0A4 C00000000"
+2  0  2  -              lit   "NOW"
+2  4 11  now_tick       h8    psp_local_tick
+2 13 13  -              lit   "P"
+2 14 18  run_pid        d5    current->pid (the interrupted task), mod 100000
+2 20 20  -              lit   "E"
+2 21 28  run_epc        h8    interrupted EPC (0 if the frame is outside the task stack)
+2 30 30  -              lit   "C"
+2 31 38  run_pcount     h8    preempt_count() of the interrupted context
+#
+# Line 3: "JL 1A2B S 17 B 1 TE 0001E270 LC 880CEF10"
+3  0  1  -              lit   "JL"
+3  3  6  jp_loop        h4    jp_loop low 16 bits
+3  8  8  -              lit   "S"
+3 10 11  jp_stage       d2    thread stage code (2.5)
+3 13 13  -              lit   "B"
+3 15 15  t_busy         d1    b0 P command in flight, b1 M command in flight
+3 17 18  -              lit   "TE"
+3 20 27  t_entry_tick   h8    tick at entry of the in-flight P command
+3 29 30  -              lit   "LC"
+3 32 39  lc_epc         h8    the thread's EPC at the last tick it ran inside a command
+#
+# Line 4: "R  005 N 5 05 09 08 FF FF FF FF 80 80"   ("R NONE" before the first, "R ----" if overwritten)
+4  0  0  -              lit   "R"
+4  2  2  ret_sign       lit   "-" or " "
+4  3  5  ret_abs        d3    |ret| of the newest P record with cmd 0x08
+4  7  7  -              lit   "N"
+4  9  9  nwords         d1    its nwords
+4 11 12  rx0            h2    rx[0]
+4 14 15  rx1            h2
+4 17 18  rx2            h2
+4 20 21  rx3            h2
+4 23 24  rx4            h2
+4 26 27  rx5            h2
+4 29 30  rx6            h2
+4 32 33  rx7            h2
+4 35 36  rx8            h2
+#
+# Line 5: "W 0001D4C0 E 880CEF60 R 8800F2A4 C 00"   ("W NONE" before the first W record)
+5  0  0  -              lit   "W"
+5  2  9  w_tick         h8    tick_in of the newest W record (WB record: tick 0)
+5 11 11  -              lit   "E"
+5 13 20  w_epc          h8    its ext epc (0 for WB)
+5 22 22  -              lit   "R"
+5 24 31  w_ra           h8    its ext ra
+5 33 33  -              lit   "C"
+5 35 36  w_cur_pcnt     h2    its ext cur_pcnt
+#
+# Line 6: "MS1 S01F2A00 P0123 T1E000 F0 META01F2A00"
+6  0  2  ms_active      lit   "MS1" marker active (b24 of ms_ip_word) | "MS0"
+6  4  4  -              lit   "S"
+6  5 11  ms_ip_sector   h7    sector of the marker (low 28 bits)
+6 13 13  -              lit   "P"
+6 14 17  ms_ip_pid      d4    pid of the marker (low 16 bits of ms_ip_word), mod 10000
+6 19 19  -              lit   "T"
+6 20 24  ms_ip_tick     h5    start tick of the marker, low 20 bits (match with NOW)
+6 26 26  -              lit   "F"
+6 27 27  fat_panics     d1    fat_panics, capped at 9
+6 29 32  -              lit   "META" (only when meta_sector != 0; else blank to the end)
+6 33 39  meta_sector    h7    meta_sector (low 28 bits)

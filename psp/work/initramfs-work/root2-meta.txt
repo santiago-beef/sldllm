@@ -1,0 +1,95 @@
+b 0:0 644 ./dev/ms0 -> 
+c 0:0 644 ./dev/console -> 
+c 0:0 644 ./dev/fb0 -> 
+c 0:0 644 ./dev/input/mice -> 
+c 0:0 644 ./dev/input/mouse0 -> 
+c 0:0 644 ./dev/joypad -> 
+c 0:0 644 ./dev/null -> 
+c 0:0 644 ./dev/psaux -> 
+c 0:0 644 ./dev/tty -> 
+c 0:0 644 ./dev/tty1 -> 
+c 0:0 644 ./dev/tty2 -> 
+c 0:0 644 ./dev/tty3 -> 
+c 0:0 644 ./dev/tty4 -> 
+c 0:0 644 ./dev/tty5 -> 
+c 0:0 644 ./dev/tty6 -> 
+c 0:0 644 ./dev/ttySRC2 -> 
+c 0:0 644 ./dev/vcs -> 
+c 0:0 644 ./dev/zero -> 
+d 0:0 755 ./bin -> 
+d 0:0 755 ./dev -> 
+d 0:0 755 ./dev/input -> 
+d 0:0 755 ./etc -> 
+d 0:0 755 ./ms0 -> 
+d 0:0 755 ./proc -> 
+d 0:0 755 ./sbin -> 
+d 0:0 755 ./usr -> 
+d 0:0 755 ./usr/bin -> 
+d 1001:1001 775 . -> 
+f 0:0 644 ./etc/inittab -> 
+f 0:0 644 ./etc/profile -> 
+f 0:0 744 ./usr/bin/pspmd -> 
+f 0:0 744 ./usr/bin/psposk2 -> 
+f 0:0 755 ./bin/busybox -> 
+f 0:0 755 ./etc/rc.sysinit -> 
+l 0:0 777 ./bin/cat -> busybox
+l 0:0 777 ./bin/chmod -> busybox
+l 0:0 777 ./bin/cp -> busybox
+l 0:0 777 ./bin/date -> busybox
+l 0:0 777 ./bin/dd -> busybox
+l 0:0 777 ./bin/df -> busybox
+l 0:0 777 ./bin/dmesg -> busybox
+l 0:0 777 ./bin/echo -> busybox
+l 0:0 777 ./bin/egrep -> busybox
+l 0:0 777 ./bin/false -> busybox
+l 0:0 777 ./bin/fgrep -> busybox
+l 0:0 777 ./bin/grep -> busybox
+l 0:0 777 ./bin/kill -> busybox
+l 0:0 777 ./bin/ln -> busybox
+l 0:0 777 ./bin/ls -> busybox
+l 0:0 777 ./bin/mkdir -> busybox
+l 0:0 777 ./bin/mknod -> busybox
+l 0:0 777 ./bin/more -> busybox
+l 0:0 777 ./bin/mount -> busybox
+l 0:0 777 ./bin/msh -> busybox
+l 0:0 777 ./bin/mv -> busybox
+l 0:0 777 ./bin/printenv -> busybox
+l 0:0 777 ./bin/ps -> busybox
+l 0:0 777 ./bin/pwd -> busybox
+l 0:0 777 ./bin/rm -> busybox
+l 0:0 777 ./bin/rmdir -> busybox
+l 0:0 777 ./bin/sed -> busybox
+l 0:0 777 ./bin/sh -> busybox
+l 0:0 777 ./bin/stty -> busybox
+l 0:0 777 ./bin/tar -> busybox
+l 0:0 777 ./bin/touch -> busybox
+l 0:0 777 ./bin/true -> busybox
+l 0:0 777 ./bin/umount -> busybox
+l 0:0 777 ./bin/uname -> busybox
+l 0:0 777 ./bin/vi -> busybox
+l 0:0 777 ./dev/fb -> fb0
+l 0:0 777 ./dev/mouse -> psaux
+l 0:0 777 ./init -> bin/busybox
+l 0:0 777 ./sbin/halt -> ../bin/busybox
+l 0:0 777 ./sbin/init -> ../bin/busybox
+l 0:0 777 ./sbin/pivot_root -> ../bin/busybox
+l 0:0 777 ./sbin/poweroff -> ../bin/busybox
+l 0:0 777 ./sbin/reboot -> ../bin/busybox
+l 0:0 777 ./sbin/switch_root -> ../bin/busybox
+l 0:0 777 ./usr/bin/[ -> ../../bin/busybox
+l 0:0 777 ./usr/bin/[[ -> ../../bin/busybox
+l 0:0 777 ./usr/bin/clear -> ../../bin/busybox
+l 0:0 777 ./usr/bin/du -> ../../bin/busybox
+l 0:0 777 ./usr/bin/find -> ../../bin/busybox
+l 0:0 777 ./usr/bin/free -> ../../bin/busybox
+l 0:0 777 ./usr/bin/less -> ../../bin/busybox
+l 0:0 777 ./usr/bin/printf -> ../../bin/busybox
+l 0:0 777 ./usr/bin/rx -> ../../bin/busybox
+l 0:0 777 ./usr/bin/sort -> ../../bin/busybox
+l 0:0 777 ./usr/bin/test -> ../../bin/busybox
+l 0:0 777 ./usr/bin/top -> ../../bin/busybox
+l 0:0 777 ./usr/bin/tty -> ../../bin/busybox
+l 0:0 777 ./usr/bin/which -> ../../bin/busybox
+l 0:0 777 ./usr/bin/who -> ../../bin/busybox
+l 0:0 777 ./usr/bin/whoami -> ../../bin/busybox
+l 0:0 777 ./usr/screenshots -> /ms0/picture

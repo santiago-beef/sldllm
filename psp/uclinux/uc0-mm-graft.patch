@@ -1,0 +1,50 @@
+diff -Naur linux-2.6.22/mm/nommu.c linux-2.6.22-uc0/mm/nommu.c
+--- linux-2.6.22/mm/nommu.c	2007-07-12 15:22:07.000000000 +1000
++++ linux-2.6.22-uc0/mm/nommu.c	2007-07-12 15:24:21.000000000 +1000
+@@ -367,6 +367,11 @@
+ 	return find_vma(mm, addr);
+ }
+ 
++int expand_stack(struct vm_area_struct *vma, unsigned long address)
++{
++	return -ENOMEM;
++}
++
+ /*
+  * look up the first VMA exactly that exactly matches addr
+  * - should be called with mm->mmap_sem at least held readlocked
+@@ -925,6 +930,16 @@
+ 	if (ret < 0)
+ 		goto error;
+ 
++	/*
++	 * If the driver implemented his own mmap(), the
++	 * base addr could have changed. Therefor
++	 * vm_end musst be updated to.
++	 *
++	 * See comment of DaveM in mm/mmap.c as reference
++	 */
++	if(addr != vma->vm_start)
++		vma->vm_end = vma->vm_start + len;
++
+ 	/* okay... we have a mapping; now we have to register it */
+ 	result = (void *) vma->vm_start;
+ 
+diff -Naur linux-2.6.22/mm/page_alloc.c linux-2.6.22-uc0/mm/page_alloc.c
+--- linux-2.6.22/mm/page_alloc.c	2007-07-12 15:22:07.000000000 +1000
++++ linux-2.6.22-uc0/mm/page_alloc.c	2007-07-12 15:24:20.000000000 +1000
+@@ -3342,6 +3342,14 @@
+ 	if (numentries > max)
+ 		numentries = max;
+ 
++	/*
++	 * we will allocate at least a page (even on low memory systems)
++	 * so do a fixup here to ensure we utilise the space that will be
++	 * allocated,  this also prevents us reporting -ve orders
++	 */
++	if (bucketsize * numentries < PAGE_SIZE)
++		numentries = (PAGE_SIZE + bucketsize - 1) / bucketsize;
++
+ 	log2qty = ilog2(numentries);
+ 
+ 	do {

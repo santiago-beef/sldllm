@@ -1,0 +1,43 @@
+Stage 3 closure re-measurement: summary of measure-output.json (python3 measure.py > measure-output.json; python3 summary.py)
+images: base vmlinux.bin af7c08d73bcc54ec ; new (release) vmlinux.bin 22fc39342882e04a = gunzip(vmlinux-0.22.bin 4f9b69dc...)
+model: ACK after 20 polls; replies 0x08 5 words, 0x33 2, Nop 2; 1 instruction = 1 Count at 220912896 Hz (UNVERIFIED)
+
+THREAD PATH (warm; second call)          base  new   added  us    stack base->new
+P08 before S5                             160   235    +75
+P08 S5..S20 window                        357   357     +0
+P08 after S20                              94   576   +482
+P08 total                                 611  1168   +557  2.52  112->320 B (+208)
+P08 new code by function: __bzero 29, __memcpy 28, memcpy 1, memset 2, memset_partial 13, psc_dcount 30, psc_fill_sc 111, psc_sc_exit 167, psc_syscon_cmd 80, psc_xfer_out 32
+P08 Syscon_cmd 639 (base 575: +64 = hand-off and A2 store)
+P08 new: entry->c_in 35, c_in->c_out 744 (MMIO 46), c_out->t2 (p_rec_cost window) 309, t2->return 80, S20->c_out 187, c_in->S5 200
+P33 before S5                             166   241    +75
+P33 S5..S20 window                        312   312     +0
+P33 after S20                              46   531   +485
+P33 total                                 524  1084   +560  2.53  104->312 B (+208)
+P33 new code by function: __bzero 29, __memcpy 28, memcpy 1, memset 2, memset_partial 13, psc_dcount 30, psc_fill_sc 111, psc_sc_exit 170, psc_syscon_cmd 80, psc_xfer_out 32
+P33 Syscon_cmd 570 (base 506: +64 = hand-off and A2 store)
+P33 new: entry->c_in 35, c_in->c_out 675 (MMIO 40), c_out->t2 (p_rec_cost window) 312, t2->return 62, S20->c_out 157, c_in->S5 206
+
+TIMER INTERRUPT (plat_irq_dispatch entry to its call of irq_enter)
+TICK warm base   35 new   83 added   +48 (0.22 us); first of boot added +49; stack below pt_regs 24->72 B (+48)
+WD   warm base  566 new 1491 added  +925 (4.19 us); first of boot added +994; stack below pt_regs 128->344 B (+216)
+     Nop: before its S5 +64, its window +0, after its S20 +861
+WDP  warm base  641 new 1745 added +1104 (5.00 us); first of boot added +1173; stack below pt_regs 128->344 B (+216)
+     Nop: before its S5 +65, its window +0, after its S20 +1039
+T2D  new only (tick 125 mod 250, panel painting): 205884 instructions (932 us); stack below pt_regs 488 B; VRAM stores 55408 in 04058000..04087f80
+     by function: psc_panel_fill 139575 (fixed), pspClearDcache 1289 (16 KB D-cache UNVERIFIED), psc_panel_t2d 60882 + pl_* 3922 (text, content-dependent)
+
+G3-LOW GAP (0x33 S20 store -> 0x08 S13 store): base 252 instructions, new 818, added +566 (2.56 us); MMIO in the gap 10 (latency m each)
+  of the new gap: recorded interval g = c_out(0x33)..c_in(0x08) 419 instructions (p_rec_cost window 312); outside g 399 (S20->c_out 157 + c_in->S13 242)
+  thread code between the calls: base 4, new 10 (thread-code-listing.txt)
+
+THREAD-SIDE HOOKS (the functions the kernel calls; the inline call code, ~16 instructions, read from the listing, not included)
+  psc_poll_begin [90, 95]; psc_poll_end [110, 110]; psc_sched_wake_slow [109]
+  psc_sched_switch_slow: a switch while the thread waits 136, the switch-in of the thread 203, the thread's own switch-out to sleep 45
+  preempted inside a command: its switch-out 150, a switch while it is off the CPU 144, its switch-in 190
+  start shift of the 0x33's S5 after the thread's wake-up tick: tick +48, wake 109, switch-in 203, poll_begin 95, loop top 7, inline ~16, entry +75 = 553 (2.50 us); 0x08's S5: + 566 = 1119 (5.07 us)
+  per poll (2 commands, stage code between and at loop top, poll_begin/end, wake-up, switch-in, switch-out, inline ~16): 1708 instructions (7.7 us), plus 136 per switch while it waits
+
+K5 MMIO-BOUND MODEL (new build, c_in -> c_out of a clean P record, exact on 9 points each)
+  P08: I = 404 + 11 ack_polls + 15 nwords + 5 rx[1] (exact True); N = 16 + 1 ack_polls + 2 nwords (exact True)
+  P33: I = 410 + 11 ack_polls + 15 nwords + 5 rx[1] (exact True); N = 16 + 1 ack_polls + 2 nwords (exact True)

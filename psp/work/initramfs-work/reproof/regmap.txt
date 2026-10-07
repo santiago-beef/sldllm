@@ -1,0 +1,28 @@
+# regmap.txt (DESIGN 10.6) for /home/ubuntu/psp/work/out/20261006T021722Z
+# Where the transaction keeps its values, per step (registers by name and $n).
+# W r[] / lc_r[] hold registers 2..15, 24, 25 in that order: r[0..13] =
+# $2..$15, r[14] = $24 (t8), r[15] = $25 (t9).
+#
+step     value          where                                                      W/lc slot
+all      tx_buf         t5 ($13)                                                   r[11]
+all      tx_buf + 1     t6 ($14)                                                   r[12]
+all      rx_buf         a1 ($5)                                                    r[3]
+all      rx_buf + 2     t9 ($25)                                                   r[15]
+all      retry_cnt      t8 ($24)                                                   r[14]
+S1-S3    cnt            t0 ($8)                                                    r[6]
+S8       spin (drain)   stack 8(sp) of Syscon_cmd                                  -
+S11      cnt + 1        t1 ($9)                                                    r[7]
+S11      i              t0 ($8)  (incremented before the push)                     r[6]
+S11      ptr            a3 ($7)  (tx_buf + i)                                      r[5]
+S14      spin_ack       stack 12(sp) of Syscon_cmd                                 -
+S15-S18  result         t3 ($11)                                                   r[9]
+S16-S18  i + 2          t0 ($8)  (i = t0 - 2; also a0 = i at the status test)      r[6]
+S16-S18  ptr + 2        a3 ($7)  (ptr = a3 - 2; bytes stored at -2(a3), -1(a3))    r[5]
+S18      i + 2 < 16     t1 ($9)                                                    r[7]
+S21-S22  result         t3 ($11)                                                   r[9]
+-        dmy (gpio_in)  stack 0(sp); dlast 2(sp); st9 4(sp); sttx 6(sp)            -
+LEDRMW   loaded value   a1 ($5) in both read-modify-writes of psp_led_ctrl         r[3]
+#
+# i and ptr are in registers 2..15 at S11 and S16-S18 (t0 = $8, a3 = $7),
+# as in the baseline (syscon.o +0x180..+0x1b4, +0x244..+0x298): k (P2) and
+# j (P6) are recoverable from W r[] and lc_r[] (R10).

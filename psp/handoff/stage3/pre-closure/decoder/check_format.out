@@ -1,0 +1,17 @@
+psc_format.py selftest: OK
+header: /home/ubuntu/psp/work/linux/include/linux/psc_format.h (12 structs, 263 #defines)
+  psc_sc           -> SC        size   80  fields  32  OK
+  psc_sc           -> M         size   80  fields  32  OK
+  psc_wext         -> WEXT      size  208  fields  26  OK
+  psc_w            -> W         size  288  fields  58  OK
+  psc_poll         -> POLL      size   40  fields  25  OK
+  psc_s            -> S         size   40  fields  15  OK
+  psc_stats        -> STATS     size  768  fields 124  OK
+  psc_ctl          -> CTL       size   32  fields   2  OK
+  psc_chunk_hdr    -> CHUNK_HDR size   20  fields   6  OK
+  psc_block_hdr    -> BLK_HDR   size    8  fields   4  OK
+  psc_filehdr      -> FILEHDR   size   44  fields  10  OK
+  psc_uhb          -> UHB       size   84  fields  21  OK
+  psc_filehdr_payload -> payload   size 1068  (44 + 768 + 256)
+header: 355 field comparisons, 253 constants compared
+check_format: OK

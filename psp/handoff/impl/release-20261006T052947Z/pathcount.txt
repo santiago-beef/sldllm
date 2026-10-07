@@ -1,0 +1,92 @@
+pathcount.py: baseline /home/ubuntu/psp/work/out/20260927T204657Z, under review /home/ubuntu/psp/work/out/20261006T052947Z
+Counts are executed instructions (delay slots included); "warm" = second run.
+Device model: RX FIFO empty at entry, ACK after 20 polls, reply as given.
+
+== P08
+   total     base   611   new  1168   added  +557
+   before S5 base   160   new   235   added   +75
+   S5..S20   base   357   new   357   added    +0
+   after S20 base    94   new   576   added  +482
+   stack     base   112   new   320   added   208  (bytes below the entry sp)
+   by function (new): Syscon_cmd 639, psc_sc_exit 167, psc_fill_sc 111, psc_syscon_cmd 80, _pspSysconGetCtrl2 36, psc_xfer_out 32, psc_dcount 30, __bzero 29, cleanup_both_aligned 16, memset_partial 13, __copy_user 7, both_aligned 3, memset 2, done 2, memcpy 1
+   by function (base): Syscon_cmd 575, _pspSysconGetCtrl2 36
+
+== P08 cold
+   total     base   611   new  1169   added  +558
+   before S5 base   160   new   235   added   +75
+   S5..S20   base   357   new   357   added    +0
+   after S20 base    94   new   577   added  +483
+   stack     base   112   new   320   added   208  (bytes below the entry sp)
+   by function (new): Syscon_cmd 639, psc_sc_exit 168, psc_fill_sc 111, psc_syscon_cmd 80, _pspSysconGetCtrl2 36, psc_xfer_out 32, psc_dcount 30, __bzero 29, cleanup_both_aligned 16, memset_partial 13, __copy_user 7, both_aligned 3, memset 2, done 2, memcpy 1
+   by function (base): Syscon_cmd 575, _pspSysconGetCtrl2 36
+
+== P33
+   total     base   524   new  1084   added  +560
+   before S5 base   166   new   241   added   +75
+   S5..S20   base   312   new   312   added    +0
+   after S20 base    46   new   531   added  +485
+   stack     base   104   new   312   added   208  (bytes below the entry sp)
+   by function (new): Syscon_cmd 570, psc_sc_exit 170, psc_fill_sc 111, psc_syscon_cmd 80, psc_xfer_out 32, psc_dcount 30, __bzero 29, pspSyscon_tx_dword 18, cleanup_both_aligned 16, memset_partial 13, __copy_user 7, both_aligned 3, memset 2, done 2, memcpy 1
+   by function (base): Syscon_cmd 506, pspSyscon_tx_dword 18
+
+== TICK
+   total     base    33   new    81   added   +48
+   stack     base    24   new    72   added    48  (bytes below the entry sp; + PT_SIZE 176 for the exception frame)
+   by function (new): psc_tick_hook 38, plat_irq_dispatch 36, psp_uart3_txrx_tick 7
+   by function (base): plat_irq_dispatch 26, psp_uart3_txrx_tick 7
+
+== WD
+   total     base   564   new  1486   added  +922
+   before S5 base   197   new   261   added   +64
+   S5..S20   base   312   new   312   added    +0
+   after S20 base    55   new   913   added  +858
+   stack     base   128   new   344   added   216  (bytes below the entry sp; + PT_SIZE 176 for the exception frame)
+   by function (new): Syscon_cmd 564, psc_sc_exit 351, psc_fill_sc 111, __bzero 96, psc_syscon_cmd 59, both_aligned 49, plat_irq_dispatch 41, psc_tick_hook 38, psc_dcount 30, psc_xfer_out 29, memset_partial 27, pspSyscon_tx_dword 18, cleanup_both_aligned 18, __copy_user 14, psc_cur_regs 13, psp_uart3_txrx_tick 7, psp_pacify_watchdog 6, pspSyscon_tx_noparam 5, memset 4, done 4, memcpy 2
+   by function (base): Syscon_cmd 500, plat_irq_dispatch 28, pspSyscon_tx_dword 18, psp_uart3_txrx_tick 7, psp_pacify_watchdog 6, pspSyscon_tx_noparam 5
+
+== WD cold
+   total     base   564   new  1554   added  +990
+   before S5 base   197   new   261   added   +64
+   S5..S20   base   312   new   312   added    +0
+   after S20 base    55   new   981   added  +926
+   stack     base   128   new   344   added   216  (bytes below the entry sp; + PT_SIZE 176 for the exception frame)
+   by function (new): Syscon_cmd 564, psc_sc_exit 357, psc_fill_sc 111, __bzero 96, psc_syscon_end_calc 62, psc_syscon_cmd 59, both_aligned 49, plat_irq_dispatch 41, psc_tick_hook 38, psc_dcount 30, psc_xfer_out 29, memset_partial 27, pspSyscon_tx_dword 18, cleanup_both_aligned 18, __copy_user 14, psc_cur_regs 13, psp_uart3_txrx_tick 7, psp_pacify_watchdog 6, pspSyscon_tx_noparam 5, memset 4, done 4, memcpy 2
+   by function (base): Syscon_cmd 500, plat_irq_dispatch 28, pspSyscon_tx_dword 18, psp_uart3_txrx_tick 7, psp_pacify_watchdog 6, pspSyscon_tx_noparam 5
+
+== WDP
+   total     base   639   new  1743   added +1104
+   before S5 base   197   new   262   added   +65
+   S5..S20   base   357   new   357   added    +0
+   after S20 base    85   new  1124   added +1039
+   stack     base   128   new   344   added   216  (bytes below the entry sp; + PT_SIZE 176 for the exception frame)
+   interrupted at 880cf0a4 (base 880cefe0)
+   by function (new): Syscon_cmd 639, psc_sc_exit 359, psc_tick_hook 198, psc_fill_sc 111, __bzero 96, psc_syscon_cmd 60, both_aligned 49, plat_irq_dispatch 41, psc_dcount 30, psc_xfer_out 29, memset_partial 27, psc_cur_regs 26, pspSyscon_tx_dword 18, cleanup_both_aligned 18, __copy_user 14, psp_uart3_txrx_tick 7, psp_pacify_watchdog 6, pspSyscon_tx_noparam 5, memset 4, done 4, memcpy 2
+   by function (base): Syscon_cmd 575, plat_irq_dispatch 28, pspSyscon_tx_dword 18, psp_uart3_txrx_tick 7, psp_pacify_watchdog 6, pspSyscon_tx_noparam 5
+
+== T2D
+   total     new 228520
+   stack     base     -   new   488   added     -  (bytes below the entry sp; + PT_SIZE 176 for the exception frame)
+   by function (new): psc_panel_fill 139575, psc_panel_t2d 81916, pl_ch 2420, pl_hex 1467, pspClearDcache 1289, pl_dec 852, pl_str 712, __bzero 86, pl_age 72, psc_tick_hook 48, plat_irq_dispatch 36, psc_panel_account 20, memset_partial 12, psp_uart3_txrx_tick 7, psc_fat_rdonly 6, memset 2
+
+== Records written by the compiled code in these runs (decoded with pscdec_parse.norm_record)
+   P head 5: cmd 0x08 ret 34 nwords 5 nw7or8 0 rx 220908ffffffff8080d0ffffffffffff ctx 0x14 ack_polls 20 drain 0 wn 0
+   _pspSysconGetCtrl2 output word 0xffffffff (rx[3..6], joypad_psp.c reads it)
+   W head 3 (the WDP Nop): origin 3 ret 34 nwords 5 rx 220908ffffffff8080d0ffffffffffff ext_flags 0x1d t_busy 1 epc 880cf0a4 lc_n 0
+   T2D: 184320 bytes written outside the image and the test stacks, 84058000..84087f7f (the panel band of VRAM)
+
+== nwords table of the compiled code (K9): reply as the device gives it -> P record
+   case                             ret nwords nw7or8 retries ack_polls  drain  rx
+   0 words                            0      0      0       0        20      0  ffffffffffffffffffffffffffffffff
+   1 words                           -2      1      0       0        20      0  2209ffffffffffffffffffffffffffff
+   2 words                           -2      2      0       0        20      0  22090800ffffffffffffffffffffffff
+   3 words                           -2      3      0       0        20      0  2209080000ffffffffffffffffffffff
+   4 words                           -2      4      0       0        20      0  2209080000ffff80ffffffffffffffff
+   5 words                           -2      5      0       0        20      0  2209080000ffff8080d0ffffffffffff
+   6 words                           -2      6      0       0        20      0  2209080000ffff8080d01111ffffffff
+   7 words                           -2      7      1       0        20      0  2209080000ffff8080d011112222ffff
+   8 words, 8th 0x3333               -2      8      0       0        20      0  2209080000ffff8080d0111122223333
+   8 words, 8th 0xFFFF               -2      7      1       0        20      0  2209080000ffff8080d011112222ffff
+   -5: rx[2] 0x80 on every try       -5      2      0      16        20      0  220380f2ffffffffffffffffffffffff
+   -4: no ACK                        -4      0      0       0   1000001      0  ffffffffffffffffffffffffffffffff
+   -3: RX never empties              -3      0      0       0 4294967295  65535  ffffffffffffffffffffffffffffffff
+

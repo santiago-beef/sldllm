@@ -1,0 +1,10 @@
+folder:        PSP/GAME/uClinux_TRACE
+staged:        2026-10-06 05:37:38 UTC by package.sh
+build out dir: /home/ubuntu/psp/work/out/20261006T052947Z
+build log:     /home/ubuntu/psp/work/logs/build-20261006T052947Z.log
+git commit:    48dcc1b9dad43f0f919a859b5d9cc44771558f3d
+tracked changes at build time:
+kernel banner: Linux version 2.6.22 (root@psp-work-build) (gcc version 4.2.1) #1 PREEMPT Tue Oct 6 05:32:47 UTC 2026
+pspboot files copied verbatim from: /home/ubuntu/psp/pspboot-baseline
+BUILD (decoder inputs, not for the stick): /home/ubuntu/psp/handoff/impl/release-20261006T052947Z/BUILD, build_id 0x045b27d9
+status: COMPLETE

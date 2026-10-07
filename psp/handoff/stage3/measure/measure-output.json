@@ -1,0 +1,838 @@
+{
+ "added": {
+  "P08": {
+   "after_s20": 482,
+   "before_s5": 75,
+   "stack": 208,
+   "total": 557,
+   "total_us": 2.52,
+   "window": 0
+  },
+  "P33": {
+   "after_s20": 485,
+   "before_s5": 75,
+   "stack": 208,
+   "total": 560,
+   "total_us": 2.53,
+   "window": 0
+  },
+  "T2D": {
+   "total": 205884,
+   "total_us": 932.0
+  },
+  "TICK": {
+   "first": 49,
+   "stack": 48,
+   "warm": 48,
+   "warm_us": 0.22
+  },
+  "WD": {
+   "after_nop_s20": 861,
+   "before_nop_s5": 64,
+   "first": 994,
+   "nop_window": 0,
+   "stack": 216,
+   "warm": 925,
+   "warm_us": 4.19
+  },
+  "WDP": {
+   "after_nop_s20": 1039,
+   "before_nop_s5": 65,
+   "first": 1173,
+   "nop_window": 0,
+   "stack": 216,
+   "warm": 1104,
+   "warm_us": 5.0
+  }
+ },
+ "fit": {
+  "P08": {
+   "I_coef_const_ack_nwords_rx1": [
+    404.0,
+    11.0,
+    15.0,
+    5.0
+   ],
+   "I_fit_exact": true,
+   "N_coef_const_ack_nwords_rx1": [
+    16.0,
+    1.0,
+    2.0,
+    0.0
+   ],
+   "N_fit_exact": true,
+   "points": [
+    {
+     "I": 494,
+     "N": 24,
+     "ack_polls": 0,
+     "nwords": 4,
+     "rec_dur": 494,
+     "rx1": 6
+    },
+    {
+     "I": 714,
+     "N": 44,
+     "ack_polls": 20,
+     "nwords": 4,
+     "rec_dur": 714,
+     "rx1": 6
+    },
+    {
+     "I": 1594,
+     "N": 124,
+     "ack_polls": 100,
+     "nwords": 4,
+     "rec_dur": 1594,
+     "rx1": 6
+    },
+    {
+     "I": 524,
+     "N": 26,
+     "ack_polls": 0,
+     "nwords": 5,
+     "rec_dur": 524,
+     "rx1": 9
+    },
+    {
+     "I": 744,
+     "N": 46,
+     "ack_polls": 20,
+     "nwords": 5,
+     "rec_dur": 744,
+     "rx1": 9
+    },
+    {
+     "I": 1624,
+     "N": 126,
+     "ack_polls": 100,
+     "nwords": 5,
+     "rec_dur": 1624,
+     "rx1": 9
+    },
+    {
+     "I": 574,
+     "N": 30,
+     "ack_polls": 0,
+     "nwords": 7,
+     "rec_dur": 574,
+     "rx1": 13
+    },
+    {
+     "I": 794,
+     "N": 50,
+     "ack_polls": 20,
+     "nwords": 7,
+     "rec_dur": 794,
+     "rx1": 13
+    },
+    {
+     "I": 1674,
+     "N": 130,
+     "ack_polls": 100,
+     "nwords": 7,
+     "rec_dur": 1674,
+     "rx1": 13
+    }
+   ]
+  },
+  "P33": {
+   "I_coef_const_ack_nwords_rx1": [
+    410.0,
+    11.0,
+    15.0,
+    5.0
+   ],
+   "I_fit_exact": true,
+   "N_coef_const_ack_nwords_rx1": [
+    16.0,
+    1.0,
+    2.0,
+    0.0
+   ],
+   "N_fit_exact": true,
+   "points": [
+    {
+     "I": 455,
+     "N": 20,
+     "ack_polls": 0,
+     "nwords": 2,
+     "rec_dur": 455,
+     "rx1": 3
+    },
+    {
+     "I": 675,
+     "N": 40,
+     "ack_polls": 20,
+     "nwords": 2,
+     "rec_dur": 675,
+     "rx1": 3
+    },
+    {
+     "I": 1555,
+     "N": 120,
+     "ack_polls": 100,
+     "nwords": 2,
+     "rec_dur": 1555,
+     "rx1": 3
+    },
+    {
+     "I": 500,
+     "N": 24,
+     "ack_polls": 0,
+     "nwords": 4,
+     "rec_dur": 500,
+     "rx1": 6
+    },
+    {
+     "I": 720,
+     "N": 44,
+     "ack_polls": 20,
+     "nwords": 4,
+     "rec_dur": 720,
+     "rx1": 6
+    },
+    {
+     "I": 1600,
+     "N": 124,
+     "ack_polls": 100,
+     "nwords": 4,
+     "rec_dur": 1600,
+     "rx1": 6
+    },
+    {
+     "I": 550,
+     "N": 28,
+     "ack_polls": 0,
+     "nwords": 6,
+     "rec_dur": 550,
+     "rx1": 10
+    },
+    {
+     "I": 770,
+     "N": 48,
+     "ack_polls": 20,
+     "nwords": 6,
+     "rec_dur": 770,
+     "rx1": 10
+    },
+    {
+     "I": 1650,
+     "N": 128,
+     "ack_polls": 100,
+     "nwords": 6,
+     "rec_dur": 1650,
+     "rx1": 10
+    }
+   ]
+  }
+ },
+ "g3_low_gap": {
+  "added": 566,
+  "added_us": 2.56,
+  "base_instr": 252,
+  "cout_to_t2_P33": 312,
+  "delta_I_gap": 566,
+  "mmio_in_gap": 10,
+  "new_cin_to_s13_P08": 242,
+  "new_instr": 818,
+  "new_s20_to_cout_P33": 157,
+  "outside_g_instr": 399,
+  "recorded_g_instr": 419
+ },
+ "images": {
+  "base vmlinux.bin": "af7c08d73bcc54ecf26d94d67330a845a5db7dd3ceb7ad122b08fe4864e5e706",
+  "new vmlinux.bin": "22fc39342882e04af332b2321a18b4b6373dd550c9e5f79f8d6f0ff0b01c312b"
+ },
+ "model": {
+  "ack_polls": 20,
+  "count_hz": 220912896,
+  "ipc": 1,
+  "reply_08_words": 5,
+  "reply_33_words": 2,
+  "reply_nop_words": 2
+ },
+ "scenarios": {
+  "base": {
+   "P08": [
+    {
+     "after_s20": 94,
+     "before_s5": 160,
+     "by_function": {
+      "Syscon_cmd": 575,
+      "_pspSysconGetCtrl2": 36
+     },
+     "entry_to_s13": 202,
+     "mmio_s5_to_s13_incl": 11,
+     "mmio_s5_to_s20_incl": 46,
+     "mmio_total": 46,
+     "nnull": 3,
+     "ret": 34,
+     "stack_bytes": 112,
+     "total": 611,
+     "window_s5_s20": 357
+    },
+    {
+     "after_s20": 94,
+     "before_s5": 160,
+     "by_function": {
+      "Syscon_cmd": 575,
+      "_pspSysconGetCtrl2": 36
+     },
+     "entry_to_s13": 202,
+     "mmio_s5_to_s13_incl": 11,
+     "mmio_s5_to_s20_incl": 46,
+     "mmio_total": 46,
+     "nnull": 6,
+     "ret": 34,
+     "stack_bytes": 112,
+     "total": 611,
+     "window_s5_s20": 357
+    }
+   ],
+   "P33": [
+    {
+     "after_s20": 46,
+     "before_s5": 166,
+     "by_function": {
+      "Syscon_cmd": 506,
+      "pspSyscon_tx_dword": 18
+     },
+     "entry_to_s13": 208,
+     "mmio_s5_to_s13_incl": 11,
+     "mmio_s5_to_s20_incl": 40,
+     "mmio_total": 40,
+     "nnull": 3,
+     "ret": 34,
+     "stack_bytes": 104,
+     "total": 524,
+     "window_s5_s20": 312
+    },
+    {
+     "after_s20": 46,
+     "before_s5": 166,
+     "by_function": {
+      "Syscon_cmd": 506,
+      "pspSyscon_tx_dword": 18
+     },
+     "entry_to_s13": 208,
+     "mmio_s5_to_s13_incl": 11,
+     "mmio_s5_to_s20_incl": 40,
+     "mmio_total": 40,
+     "nnull": 6,
+     "ret": 34,
+     "stack_bytes": 104,
+     "total": 524,
+     "window_s5_s20": 312
+    }
+   ],
+   "TICK": [
+    {
+     "by_function": {
+      "plat_irq_dispatch": 28,
+      "psp_uart3_txrx_tick": 7
+     },
+     "mmio": 0,
+     "nnull": 0,
+     "stack_below_ptregs": 24,
+     "total": 35
+    },
+    {
+     "by_function": {
+      "plat_irq_dispatch": 28,
+      "psp_uart3_txrx_tick": 7
+     },
+     "mmio": 0,
+     "nnull": 0,
+     "stack_below_ptregs": 24,
+     "total": 35
+    }
+   ],
+   "WD": [
+    {
+     "after_nop_s20": 57,
+     "before_nop_s5": 197,
+     "by_function": {
+      "Syscon_cmd": 500,
+      "plat_irq_dispatch": 30,
+      "pspSyscon_tx_dword": 18,
+      "pspSyscon_tx_noparam": 5,
+      "psp_pacify_watchdog": 6,
+      "psp_uart3_txrx_tick": 7
+     },
+     "mmio": 40,
+     "nnull": 3,
+     "nop_window": 312,
+     "stack_below_ptregs": 128,
+     "total": 566
+    },
+    {
+     "after_nop_s20": 57,
+     "before_nop_s5": 197,
+     "by_function": {
+      "Syscon_cmd": 500,
+      "plat_irq_dispatch": 30,
+      "pspSyscon_tx_dword": 18,
+      "pspSyscon_tx_noparam": 5,
+      "psp_pacify_watchdog": 6,
+      "psp_uart3_txrx_tick": 7
+     },
+     "mmio": 40,
+     "nnull": 6,
+     "nop_window": 312,
+     "stack_below_ptregs": 128,
+     "total": 566
+    }
+   ],
+   "WDP": [
+    {
+     "after_nop_s20": 87,
+     "before_nop_s5": 197,
+     "by_function": {
+      "Syscon_cmd": 575,
+      "plat_irq_dispatch": 30,
+      "pspSyscon_tx_dword": 18,
+      "pspSyscon_tx_noparam": 5,
+      "psp_pacify_watchdog": 6,
+      "psp_uart3_txrx_tick": 7
+     },
+     "mmio": 46,
+     "nnull": 3,
+     "nop_window": 357,
+     "stack_below_ptregs": 128,
+     "total": 641
+    },
+    {
+     "after_nop_s20": 87,
+     "before_nop_s5": 197,
+     "by_function": {
+      "Syscon_cmd": 575,
+      "plat_irq_dispatch": 30,
+      "pspSyscon_tx_dword": 18,
+      "pspSyscon_tx_noparam": 5,
+      "psp_pacify_watchdog": 6,
+      "psp_uart3_txrx_tick": 7
+     },
+     "mmio": 46,
+     "nnull": 6,
+     "nop_window": 357,
+     "stack_below_ptregs": 128,
+     "total": 641
+    }
+   ]
+  },
+  "new": {
+   "P08": [
+    {
+     "after_s20": 577,
+     "before_s5": 235,
+     "by_function": {
+      "Syscon_cmd": 639,
+      "__bzero": 29,
+      "__memcpy": 28,
+      "_pspSysconGetCtrl2": 36,
+      "memcpy": 1,
+      "memset": 2,
+      "memset_partial": 13,
+      "psc_dcount": 30,
+      "psc_fill_sc": 111,
+      "psc_sc_exit": 168,
+      "psc_syscon_cmd": 80,
+      "psc_xfer_out": 32
+     },
+     "cin_to_cout": 744,
+     "cin_to_s13": 242,
+     "cin_to_s5": 200,
+     "cout_to_t2": 309,
+     "entry_to_cin": 35,
+     "entry_to_s13": 277,
+     "mmio_cin_to_cout": 46,
+     "mmio_s5_to_s13_incl": 11,
+     "mmio_s5_to_s20_incl": 46,
+     "mmio_total": 46,
+     "nnull": 13,
+     "record": {
+      "ack_polls": 20,
+      "c_in": 35,
+      "c_out": 779,
+      "cmd": 8,
+      "drain": 0,
+      "dtick": 0,
+      "lc_n": 0,
+      "nwords": 5,
+      "preempt_delta": 0,
+      "ret": 34,
+      "retries": 0,
+      "seq": 0,
+      "wn": 0
+     },
+     "ret": 34,
+     "s20_to_cout": 187,
+     "stack_bytes": 320,
+     "t2_to_ret": 81,
+     "total": 1169,
+     "window_s5_s20": 357
+    },
+    {
+     "after_s20": 576,
+     "before_s5": 235,
+     "by_function": {
+      "Syscon_cmd": 639,
+      "__bzero": 29,
+      "__memcpy": 28,
+      "_pspSysconGetCtrl2": 36,
+      "memcpy": 1,
+      "memset": 2,
+      "memset_partial": 13,
+      "psc_dcount": 30,
+      "psc_fill_sc": 111,
+      "psc_sc_exit": 167,
+      "psc_syscon_cmd": 80,
+      "psc_xfer_out": 32
+     },
+     "cin_to_cout": 744,
+     "cin_to_s13": 242,
+     "cin_to_s5": 200,
+     "cout_to_t2": 309,
+     "entry_to_cin": 35,
+     "entry_to_s13": 277,
+     "mmio_cin_to_cout": 46,
+     "mmio_s5_to_s13_incl": 11,
+     "mmio_s5_to_s20_incl": 46,
+     "mmio_total": 46,
+     "nnull": 26,
+     "record": {
+      "ack_polls": 20,
+      "c_in": 1204,
+      "c_out": 1948,
+      "cmd": 8,
+      "drain": 0,
+      "dtick": 0,
+      "lc_n": 0,
+      "nwords": 5,
+      "preempt_delta": 0,
+      "ret": 34,
+      "retries": 0,
+      "seq": 1,
+      "wn": 0
+     },
+     "ret": 34,
+     "s20_to_cout": 187,
+     "stack_bytes": 320,
+     "t2_to_ret": 80,
+     "total": 1168,
+     "window_s5_s20": 357
+    }
+   ],
+   "P33": [
+    {
+     "after_s20": 532,
+     "before_s5": 241,
+     "by_function": {
+      "Syscon_cmd": 570,
+      "__bzero": 29,
+      "__memcpy": 28,
+      "memcpy": 1,
+      "memset": 2,
+      "memset_partial": 13,
+      "psc_dcount": 30,
+      "psc_fill_sc": 111,
+      "psc_sc_exit": 171,
+      "psc_syscon_cmd": 80,
+      "psc_xfer_out": 32,
+      "pspSyscon_tx_dword": 18
+     },
+     "cin_to_cout": 675,
+     "cin_to_s13": 248,
+     "cin_to_s5": 206,
+     "cout_to_t2": 312,
+     "entry_to_cin": 35,
+     "entry_to_s13": 283,
+     "mmio_cin_to_cout": 40,
+     "mmio_s5_to_s13_incl": 11,
+     "mmio_s5_to_s20_incl": 40,
+     "mmio_total": 40,
+     "nnull": 14,
+     "record": {
+      "ack_polls": 20,
+      "c_in": 35,
+      "c_out": 710,
+      "cmd": 51,
+      "drain": 0,
+      "dtick": 0,
+      "lc_n": 0,
+      "nwords": 2,
+      "preempt_delta": 0,
+      "ret": 34,
+      "retries": 0,
+      "seq": 0,
+      "wn": 0
+     },
+     "ret": 34,
+     "s20_to_cout": 157,
+     "stack_bytes": 312,
+     "t2_to_ret": 63,
+     "total": 1085,
+     "window_s5_s20": 312
+    },
+    {
+     "after_s20": 531,
+     "before_s5": 241,
+     "by_function": {
+      "Syscon_cmd": 570,
+      "__bzero": 29,
+      "__memcpy": 28,
+      "memcpy": 1,
+      "memset": 2,
+      "memset_partial": 13,
+      "psc_dcount": 30,
+      "psc_fill_sc": 111,
+      "psc_sc_exit": 170,
+      "psc_syscon_cmd": 80,
+      "psc_xfer_out": 32,
+      "pspSyscon_tx_dword": 18
+     },
+     "cin_to_cout": 675,
+     "cin_to_s13": 248,
+     "cin_to_s5": 206,
+     "cout_to_t2": 312,
+     "entry_to_cin": 35,
+     "entry_to_s13": 283,
+     "mmio_cin_to_cout": 40,
+     "mmio_s5_to_s13_incl": 11,
+     "mmio_s5_to_s20_incl": 40,
+     "mmio_total": 40,
+     "nnull": 28,
+     "record": {
+      "ack_polls": 20,
+      "c_in": 1120,
+      "c_out": 1795,
+      "cmd": 51,
+      "drain": 0,
+      "dtick": 0,
+      "lc_n": 0,
+      "nwords": 2,
+      "preempt_delta": 0,
+      "ret": 34,
+      "retries": 0,
+      "seq": 1,
+      "wn": 0
+     },
+     "ret": 34,
+     "s20_to_cout": 157,
+     "stack_bytes": 312,
+     "t2_to_ret": 62,
+     "total": 1084,
+     "window_s5_s20": 312
+    }
+   ],
+   "T2D": [
+    {
+     "by_function": {
+      "__bzero": 86,
+      "memset": 2,
+      "memset_partial": 12,
+      "pl_age": 72,
+      "pl_ch": 1738,
+      "pl_dec": 728,
+      "pl_hex": 720,
+      "pl_str": 664,
+      "plat_irq_dispatch": 38,
+      "psc_fat_rdonly": 6,
+      "psc_panel_account": 20,
+      "psc_panel_fill": 139575,
+      "psc_panel_t2d": 60882,
+      "psc_tick_hook": 45,
+      "pspClearDcache": 1289,
+      "psp_uart3_txrx_tick": 7
+     },
+     "mmio": 0,
+     "nnull": 1137,
+     "panel_cost_last": 205712,
+     "panel_state": 2,
+     "stack_below_ptregs": 488,
+     "total": 205884,
+     "vram_bytes": "04058000..04087f80",
+     "vram_stores": 55408
+    }
+   ],
+   "TICK": [
+    {
+     "by_function": {
+      "plat_irq_dispatch": 38,
+      "psc_tick_hook": 39,
+      "psp_uart3_txrx_tick": 7
+     },
+     "mmio": 0,
+     "nnull": 1,
+     "stack_below_ptregs": 72,
+     "total": 84
+    },
+    {
+     "by_function": {
+      "plat_irq_dispatch": 38,
+      "psc_tick_hook": 38,
+      "psp_uart3_txrx_tick": 7
+     },
+     "mmio": 0,
+     "nnull": 2,
+     "stack_below_ptregs": 72,
+     "total": 83
+    }
+   ],
+   "WD": [
+    {
+     "after_nop_s20": 987,
+     "before_nop_s5": 261,
+     "by_function": {
+      "Syscon_cmd": 564,
+      "__bzero": 96,
+      "__memcpy": 85,
+      "memcpy": 2,
+      "memset": 4,
+      "memset_partial": 27,
+      "plat_irq_dispatch": 43,
+      "psc_cur_regs": 13,
+      "psc_dcount": 30,
+      "psc_fill_sc": 111,
+      "psc_sc_exit": 360,
+      "psc_syscon_cmd": 59,
+      "psc_syscon_end_calc": 62,
+      "psc_tick_hook": 39,
+      "psc_xfer_out": 29,
+      "pspSyscon_tx_dword": 18,
+      "pspSyscon_tx_noparam": 5,
+      "psp_pacify_watchdog": 6,
+      "psp_uart3_txrx_tick": 7
+     },
+     "mmio": 40,
+     "nnull": 22,
+     "nop_window": 312,
+     "stack_below_ptregs": 344,
+     "total": 1560,
+     "w_rec_cost_max": 718
+    },
+    {
+     "after_nop_s20": 918,
+     "before_nop_s5": 261,
+     "by_function": {
+      "Syscon_cmd": 564,
+      "__bzero": 96,
+      "__memcpy": 85,
+      "memcpy": 2,
+      "memset": 4,
+      "memset_partial": 27,
+      "plat_irq_dispatch": 43,
+      "psc_cur_regs": 13,
+      "psc_dcount": 30,
+      "psc_fill_sc": 111,
+      "psc_sc_exit": 354,
+      "psc_syscon_cmd": 59,
+      "psc_tick_hook": 38,
+      "psc_xfer_out": 29,
+      "pspSyscon_tx_dword": 18,
+      "pspSyscon_tx_noparam": 5,
+      "psp_pacify_watchdog": 6,
+      "psp_uart3_txrx_tick": 7
+     },
+     "mmio": 40,
+     "nnull": 41,
+     "nop_window": 312,
+     "stack_below_ptregs": 344,
+     "total": 1491,
+     "w_rec_cost_max": 718
+    }
+   ],
+   "WDP": [
+    {
+     "after_nop_s20": 1195,
+     "before_nop_s5": 262,
+     "by_function": {
+      "Syscon_cmd": 639,
+      "__bzero": 96,
+      "__memcpy": 85,
+      "memcpy": 2,
+      "memset": 4,
+      "memset_partial": 27,
+      "plat_irq_dispatch": 43,
+      "psc_cur_regs": 26,
+      "psc_dcount": 30,
+      "psc_fill_sc": 111,
+      "psc_sc_exit": 365,
+      "psc_syscon_cmd": 60,
+      "psc_syscon_end_calc": 62,
+      "psc_tick_hook": 199,
+      "psc_xfer_out": 29,
+      "pspSyscon_tx_dword": 18,
+      "pspSyscon_tx_noparam": 5,
+      "psp_pacify_watchdog": 6,
+      "psp_uart3_txrx_tick": 7
+     },
+     "lc_epc": "880cf0a4",
+     "lc_n": 1,
+     "mmio": 46,
+     "nnull": 23,
+     "nop_window": 357,
+     "stack_below_ptregs": 344,
+     "total": 1814,
+     "w_rec_cost_max": 723
+    },
+    {
+     "after_nop_s20": 1126,
+     "before_nop_s5": 262,
+     "by_function": {
+      "Syscon_cmd": 639,
+      "__bzero": 96,
+      "__memcpy": 85,
+      "memcpy": 2,
+      "memset": 4,
+      "memset_partial": 27,
+      "plat_irq_dispatch": 43,
+      "psc_cur_regs": 26,
+      "psc_dcount": 30,
+      "psc_fill_sc": 111,
+      "psc_sc_exit": 359,
+      "psc_syscon_cmd": 60,
+      "psc_tick_hook": 198,
+      "psc_xfer_out": 29,
+      "pspSyscon_tx_dword": 18,
+      "pspSyscon_tx_noparam": 5,
+      "psp_pacify_watchdog": 6,
+      "psp_uart3_txrx_tick": 7
+     },
+     "lc_epc": "880cf0a4",
+     "lc_n": 1,
+     "mmio": 46,
+     "nnull": 43,
+     "nop_window": 357,
+     "stack_below_ptregs": 344,
+     "total": 1745,
+     "w_rec_cost_max": 723
+    }
+   ]
+  }
+ },
+ "thread_hooks": {
+  "psc_poll_begin": [
+   90,
+   95
+  ],
+  "psc_poll_end": [
+   110,
+   110
+  ],
+  "psc_sched_switch_slow": [
+   136,
+   203,
+   45
+  ],
+  "psc_sched_switch_slow_preempted": [
+   150,
+   144,
+   190
+  ],
+  "psc_sched_wake_slow": [
+   109
+  ]
+ }
+}

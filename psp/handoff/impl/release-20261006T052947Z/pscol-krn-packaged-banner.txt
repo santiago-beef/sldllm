@@ -1,0 +1,6 @@
+TEST krn_build_id (section 17 R-4): stats word 2 = CRC-32 (zlib, initial 0) of /proc/version
+  word 2 = CRC of the sim banner: KRN green                    PASS  build_ok 1 krn_id_ok 1 expect 0x8951b70c
+  word 2 differs (one bit): KRN red                            PASS  build_ok 1 krn_id_ok 0 expect 0x8951b70c
+  packaged banner.txt bytes against build_id.txt: KRN green    PASS  CRC 045b27d9, word 2 045b27d9 (build_id.txt)
+  packaged banner with one byte changed: KRN red               PASS  CRC 60614103, word 2 045b27d9 (build_id.txt)
+RESULT PASS (0 failing cases)

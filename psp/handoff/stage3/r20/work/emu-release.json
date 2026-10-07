@@ -1,0 +1,241 @@
+{
+ "folder": "/home/ubuntu/psp/work/deploy/uClinux_TRACE/PSP/GAME/uClinux_TRACE",
+ "outcome": "JUMPED_TO_KERNEL",
+ "instructions": 58148749,
+ "console": [
+  "=====================================\n PSPBoot v0.22 Created by Jackson Mo\n=====================================\n\n",
+  "Loading config file\n",
+  "  kernel: vmlinux-0.22.bin\n",
+  "  cmdline: console=tty osk=Dv4\n",
+  "Decompressing linux kernel...",
+  "1767264 bytes loaded\n",
+  "Transfering control to 0x88000000...\n"
+ ],
+ "opens": [
+  [
+   "ms0:/PSP/GAME/uClinux_TRACE/pspboot.conf",
+   "/home/ubuntu/psp/work/deploy/uClinux_TRACE/PSP/GAME/uClinux_TRACE/pspboot.conf",
+   3
+  ],
+  [
+   "ms0:/PSP/GAME/uClinux_TRACE/vmlinux-0.22.bin",
+   "/home/ubuntu/psp/work/deploy/uClinux_TRACE/PSP/GAME/uClinux_TRACE/vmlinux-0.22.bin",
+   4
+  ]
+ ],
+ "reads_summary": {
+  "pspboot.conf": {
+   "calls": 2,
+   "requested_sizes": {
+    "1024": 2
+   },
+   "bytes": 405
+  },
+  "vmlinux-0.22.bin": {
+   "calls": 916,
+   "requested_sizes": {
+    "1024": 916
+   },
+   "bytes": 936714
+  }
+ },
+ "events": [
+  [
+   "93",
+   "CreateThread",
+   "user_main",
+   "08900184",
+   "262144",
+   "09fb0000"
+  ],
+  [
+   "97",
+   "StartThread",
+   "user_main",
+   "38"
+  ],
+  [
+   "2464",
+   "IoDopen",
+   "ms0:/PSP/GAME/uClinux_TRACE",
+   "True"
+  ],
+  [
+   "2470",
+   "IoChdir",
+   "ms0:/PSP/GAME/uClinux_TRACE"
+  ],
+  [
+   "883920",
+   "LoadModule",
+   "kmodlib.prx",
+   "/home/ubuntu/psp/work/deploy/uClinux_TRACE/PSP/GAME/uClinux_TRACE/kmodlib.prx",
+   "1"
+  ],
+  [
+   "883928",
+   "StartModule",
+   "8192"
+  ],
+  [
+   "954242",
+   "AllocPartitionMemory",
+   "2",
+   "block",
+   "0",
+   "8388608",
+   "0892db00"
+  ],
+  [
+   "958950",
+   "IoGetstat",
+   "ms0:/PSP/GAME/uClinux_TRACE/pspboot.conf",
+   "True"
+  ],
+  [
+   "961098",
+   "IoLseek",
+   "pspboot.conf",
+   "0",
+   "1",
+   "0"
+  ],
+  [
+   "961108",
+   "IoLseek",
+   "pspboot.conf",
+   "0",
+   "2",
+   "405"
+  ],
+  [
+   "961115",
+   "IoLseek",
+   "pspboot.conf",
+   "0",
+   "0",
+   "0"
+  ],
+  [
+   "1153103",
+   "IoGetstat",
+   "ms0:/PSP/GAME/uClinux_TRACE/vmlinux-0.22.bin",
+   "True"
+  ],
+  [
+   "1155251",
+   "IoLseek",
+   "vmlinux-0.22.bin",
+   "0",
+   "1",
+   "0"
+  ],
+  [
+   "1155261",
+   "IoLseek",
+   "vmlinux-0.22.bin",
+   "0",
+   "2",
+   "936714"
+  ],
+  [
+   "1155268",
+   "IoLseek",
+   "vmlinux-0.22.bin",
+   "0",
+   "0",
+   "0"
+  ],
+  [
+   "1170484",
+   "IoLseek",
+   "vmlinux-0.22.bin",
+   "0",
+   "1",
+   "16384"
+  ],
+  [
+   "47456513",
+   "kmodlib.kcall",
+   "08900728",
+   "09feff10"
+  ]
+ ],
+ "kcalls": [
+  [
+   "08900728",
+   "09feff10",
+   47456513
+  ]
+ ],
+ "modules": [
+  [
+   "kmodlib.prx",
+   "/home/ubuntu/psp/work/deploy/uClinux_TRACE/PSP/GAME/uClinux_TRACE/kmodlib.prx",
+   1
+  ]
+ ],
+ "cache_ops": 1024,
+ "final": {
+  "n": 58148749,
+  "a0": 0,
+  "a1": 0,
+  "a2": 2281701384,
+  "a3": 256,
+  "sp": 167706360,
+  "ra": 143656684,
+  "status": 0
+ },
+ "loaded_reported": 1767264,
+ "ie_off": {
+  "n": 47541008,
+  "pc": "08900344",
+  "sp": "09fefef8"
+ },
+ "audit": {
+  "counts": {
+   "x": 10607741,
+   "r": 1767522,
+   "w": 1767520
+  },
+  "fetch_ranges": [
+   "08900348-089003ec (164 B)",
+   "0890066c-0890069c (48 B)",
+   "089006c8-089006ec (36 B)",
+   "08900700-08900728 (40 B)"
+  ],
+  "read_ranges": [
+   "08925ffc-08926000 (4 B)",
+   "08927348-08927448 (256 B)",
+   "089346d0-08ae3e30 (1767264 B)"
+  ],
+  "write_ranges": [
+   "08000000-081af760 (1767264 B)"
+  ],
+  "load_pcs": [
+   "08900360",
+   "08900680",
+   "0890070c"
+  ],
+  "store_pcs": [
+   "08900370"
+  ],
+  "stack_window": "09feeef8-09ff0ef8",
+  "stack_window_accesses": [],
+  "reads_inside_destination": [],
+  "fetches_inside_destination": [],
+  "writes_inside_destination": [
+   "08000000-081af760 (1767264 B)"
+  ]
+ },
+ "memcheck": {
+  "expect_file": "/home/ubuntu/psp/work/out/20261006T052947Z/vmlinux.bin",
+  "expect_len": 1767264,
+  "loaded_len": 1767264,
+  "identical_outside_cmdline": true,
+  "image_bytes_8_263_all_zero": true,
+  "cmdline_at_0x88000008": "console=tty osk=Dv4",
+  "bytes_after_image_untouched": true,
+  "first_mismatch": null
+ }
+}

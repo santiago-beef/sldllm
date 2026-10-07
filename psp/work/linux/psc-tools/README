@@ -1,0 +1,11 @@
+psc-tools: host tooling of the PSC trace, kept under version control from
+Stage 3 on (not part of the kernel build; no Makefile refers to it).
+
+decoder/     = /home/ubuntu/psp/work/decoder      (the analyst's decoder, DESIGN 10)
+pscol-test/  = /home/ubuntu/psp/work/pscol/test   (pscol host tests: run.sh, sim.c, vectors.c, xcheck.py)
+
+The working copies stay where they were (work/decoder, work/pscol/test) and
+are byte-identical to the files here; the first commit adding this directory
+imports them as delivered at G2 attempt 2 (sha256 = IMPLEMENTATION.md 5.4),
+later commits change them. Generated files (decoder/layout/, pscol_test
+binaries, __pycache__) are not tracked.

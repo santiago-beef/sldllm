@@ -1,0 +1,51 @@
+--- design/DESIGN.md (revision 6 as passed at G1)
++++ design/DESIGN.md (A7-1, A7-2, A7-3 applied in Stage 2)
+@@ -950,8 +950,8 @@
+    seeks that ring to its head `H_r`, writes EVENT `head regress <ring> <pos>
+    <head>` and turns `REC` red; the jump is counted, the ring is not stalled.
+ 3. `/proc/kmsg` (`O_NONBLOCK`, `fs/proc/kmsg.c:36`) → a KMSG chunk if new; one
+-   `syslog(3)` into the 16 KB buffer, as telem (`telem.c:279-282`), for load
+-   parity only.
++   `syscall(__NR_syslog, 3, buf, 16384)` as telem (`telem.c:279-282`), into the
++   16 KB buffer, for load parity only.
+ 4. Every 40th tick (≈ 9 s), PROCS: `/proc/<pid>/stat` of the thread (`jp_pid`),
+    `psposk2`, `pspmd`, the worker; `State:`, `SigPnd:`, `ShdPnd:` of the
+    thread (`fs/proc/array.c:167,275-279`); `MemFree`.
+@@ -1143,7 +1143,8 @@
+    operation's window (4.8) shows at least one successful write (the failure is
+    local: a FAT, directory or data sector; IF7b, IF8, IF9), at most
+    `min(400, budget / 2)` such fast attempts per run (≥ 200: IF8 needs ≤ 128,
+-   IF7b ≤ 152); otherwise (the whole stick refused) **≥ 10 s later**.
++   IF7b ≤ 16 per creation that meets the refusing sector (≤ 153 names, 15.3));
++   otherwise (the whole stick refused) **≥ 10 s later**.
+    **Names budget:** at most `min(999, free directory slots − 16)` names per run
+    (aliases included), counted at worker start (`stat` of `PSCLOG` gives its
+    size in whole clusters, `fat_calc_dir_size`, `fs/fat/inode.c:307-319`;
+@@ -1881,7 +1882,7 @@
+ 
+ | Test | Pass condition |
+ |---|---|
+-| **VFAT-FI (r3, A3 IF5 fix 4): this tree's own `fs/fat` with a fault-injecting block device.** A MIPS Malta kernel (`arch/mips/mips-boards/malta` is in this tree) built from a copy of this tree with the staging toolchain and `CONFIG_VFAT_FS`, plus a test-only RAM block driver `psc_faultblk` that completes bios synchronously like `ms_psp.c:228-276` and fails, by a schedule set through `/proc`, writes to chosen sector classes (FAT, directory, FSINFO, data) in chosen windows; run under `qemu-system-mipsel -M malta` (feasibility UNVERIFIED, R18). `pscol`'s segment and flush code, built as a static ELF, writes 30 simulated minutes of records from a simulated `/proc/psc`. Schedules: an outage covering a creation step that allocates (FAT write fails); an outage covering one steady flush; a 30 s burst; ≈ 100 single-tick outages; an outage across a switch; a failing read-back; **(r4, A4 F6) persistent refusal for the rest of the run of the FSINFO sector, of the `PSCLOG` directory sector, and of the FAT sector at the allocator**; **(r5, A5-1)** every write fails for exactly the tick of a creation's step-0 `fsync`, then the stick recovers; a 30 s whole-stick burst starting during an 8 KB creation; a 10-minute whole-stick burst during a hold; **(r5, A5 IF9)** a 2 MB data range of a ready file refusing writes after its creation, and the same range spanning the active file and the next; **(r5)** a data range ahead of the allocator; each with the block driver paced at 25, 30, 52, 100 and 300 KB/s, and with the driver's `DBG` printks kept (OE8) | after each schedule, the image mounted read-only on the host (loop mount or mtools) and decoded: **every record with `seq < durable_next` at the end is present** (in the copied files, or with `--raw` where the decoder asks for it); the guest log has **no "Filesystem panic"**; abandoned files hold no records; **no alias is ever written** (the worker's `inode reused` EVENTs against the fault driver's write log: no data sector of an alias's clusters written after the alias's `open`); the next fresh file after a step-0 failure is created within 10 s plus one tick of the stick's recovery (**r7, A6-3**: after a whole-stick failure the next attempt waits ≥ 10 s, 4.4 step 6); the raw-image scan recovers the same set; no hold exceeds 114.7 s; names used ≤ 1 + (outage seconds / 10) per outage. **Persistent schedules (r5, full scope):** META detected within 30 s of onset (EVENT, UHB b23, `meta_sector`, line 6), **`durable_tick` keeps advancing (no panel after the first 3 s), no record lost, no hold over 114.7 s**, creation continues (IF8: a file confirmed within 60 s; IF7b, **r7**: aliases rejected, a fresh file CONFIRMED within 20 ticks of the first creation attempt after onset with ≤ 153 names up to it, and every later creation ≤ 17 names), and **no record already written is destroyed** (no sector of a region handed to `write()` written twice). **IF9:** `region bad` after 3 FAILED flushes, no record lost, no hold over 114.7 s |
++| **VFAT-FI (r3, A3 IF5 fix 4): this tree's own `fs/fat` with a fault-injecting block device.** A MIPS Malta kernel (`arch/mips/mips-boards/malta` is in this tree) built from a copy of this tree with the staging toolchain and `CONFIG_VFAT_FS`, plus a test-only RAM block driver `psc_faultblk` that completes bios synchronously like `ms_psp.c:228-276` and fails, by a schedule set through `/proc`, writes to chosen sector classes (FAT, directory, FSINFO, data) in chosen windows; run under `qemu-system-mipsel -M malta` (feasibility UNVERIFIED, R18). `pscol`'s segment and flush code, built as a static ELF, writes 30 simulated minutes of records from a simulated `/proc/psc`. Schedules: an outage covering a creation step that allocates (FAT write fails); an outage covering one steady flush; a 30 s burst; ≈ 100 single-tick outages; an outage across a switch; a failing read-back; **(r4, A4 F6) persistent refusal for the rest of the run of the FSINFO sector, of the `PSCLOG` directory sector, and of the FAT sector at the allocator**; **(r5, A5-1)** every write fails for exactly the tick of a creation's step-0 `fsync`, then the stick recovers; a 30 s whole-stick burst starting during an 8 KB creation; a 10-minute whole-stick burst during a hold; **(r5, A5 IF9)** a 2 MB data range of a ready file refusing writes after its creation, and the same range spanning the active file and the next; **(r5)** a data range ahead of the allocator; each with the block driver paced at 25, 30, 52, 100 and 300 KB/s, and with the driver's `DBG` printks kept (OE8) | after each schedule, the image mounted read-only on the host (loop mount or mtools) and decoded: **every record with `seq < durable_next` at the end is present** (in the copied files, or with `--raw` where the decoder asks for it); the guest log has **no "Filesystem panic"**; abandoned files hold no records; **no alias is ever written** (the worker's `inode reused` EVENTs against the fault driver's write log: no data sector of an alias's clusters written after the alias's `open`); the next fresh file after a step-0 failure is created within 10 s plus one tick of the stick's recovery (**r7, A6-3**: after a whole-stick failure the next attempt waits ≥ 10 s, 4.4 step 6); the raw-image scan recovers the same set; no hold exceeds 114.7 s; names used ≤ 1 + (outage seconds / 10) per outage. **Persistent schedules (r5, full scope):** META detected within 30 s of onset (EVENT, UHB b23, `meta_sector`, line 6), **`durable_tick` keeps advancing (no panel after the first 3 s), no record lost, no hold over 114.7 s**, creation continues (IF8: a file confirmed within 60 s; IF7b, **r7**: aliases rejected, a fresh file CONFIRMED within 20 ticks of the first creation attempt after onset with ≤ 153 names up to it, and every later creation ≤ 17 names; **(A7-2)** the IF7b schedule runs with guest memory well above the page-cache total, so reclaim never evicts the rejected inodes (15.3)), and **no record already written is destroyed** (no sector of a region handed to `write()` written twice). **IF9:** `region bad` after 3 FAILED flushes, no record lost, no hold over 114.7 s |
+ | Full-ring first flush (every ring full at the collector's start) | every RECS chunk ≤ 65,536 B, every flush ≤ 40,960 B; lag falls every tick; only first blocks report `lost > 0` |
+ | Takeover: worker killed; separately, worker frozen 35 s | the supervisor runs the worker loop as instance 2, creates a fresh segment at 64 KB per tick, seeks to `durable_next`, no `seq` gap except counted first-read losses; a takeover before the first durable flush keeps the WB record |
+ | **(r3, A3 IF6)** reader: a corrupt mid-ring `seq`; a forward jump of the P head; a backward jump | the reader skips and counts (`slot_bad` +1, resp. the skipped slots), `f_pos` advances, the next drain is complete; the collector writes an EVENT and turns REC red; a backward jump counts `head_regress` and resyncs; **(r7, A6-4)** `pread` windows interleaved with ordinary drains: each `pread` returns the records at its own offset, and the next `read()` continues from the previous drain's end with no record skipped or repeated |
+@@ -2479,7 +2480,17 @@
+   evicted by memory reclaim makes its slot a fresh file again, abandoned at
+   step 0, ≤ 17 more names and one more tick for the creation that meets it
+   (how often reclaim evicts them is UNVERIFIED; the margin at the minimum
+-  budget covers 5 such). Files
++  budget covers 5 such). **(A7-2) If the margin runs out:** creation stops
++  (names budget spent), the files ahead last ≈ 9 minutes, then the worker
++  holds and the panel shows. **Why eviction is unlikely in this run:** unused
++  dentries and inodes are pruned only by `shrink_slab` during reclaim
++  (`mm/vmscan.c:1048`, `:1216`) or by `drop_caches`, which the design does
++  not use; by the design's own figures segment pages stay cached at about
++  2 MB per file created (10 files in 35 min, 15.6) against ≈ 20.8 MB
++  `MemFree` (5.3), so reclaim cannot begin much before minute 30 (an
++  estimate from those figures, UNVERIFIED on hardware), and the runbook ends
++  normal use at 30:00 (RUNBOOK C6). VFAT-FI runs this schedule with guest
++  memory well above the page-cache total (8.5). Files
+   whose entries are in X have stale or missing entries on the stick; their
+   records are on data sectors whose FAT links were written, recovered by the
+   raw image (mandatory with META, RUNBOOK E2). **Nothing is lost.** (If X were
