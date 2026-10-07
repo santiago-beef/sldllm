@@ -1,16 +1,10 @@
 # sldllm
 
-TODO: one-paragraph description of the project.
+For this project, I am debugging a 2008 Linux kernel that freezes when booted on a PSP-1001. Once running, I will be taking advantage of the PSP's multimedia capabilities and introduce MIDI control to the device.
 
-## Setup (macOS and Ubuntu)
 
-```bash
-git clone https://github.com/santiago-beef/sldllm.git
-cd sldllm
-cp .env.example .env   # only once .env.example exists
-```
+So far, I've been trying to debug the last Linux kernel image that can operate on a PSP, due to it's no MMU (Memory-Management Unit
 
-Sync between machines: `git pull --rebase` before working, commit and `git push` when done.
 
 ## For AI agents
 
